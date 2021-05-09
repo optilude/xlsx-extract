@@ -28,6 +28,7 @@ class MatchOperator(Enum):
 class RangeSize(Enum):
 
     NAMED = "Named"             # Find a named range
+    TABLE = "Table"             # Find a named data table
     FIXED = "Fixed"             # Specify a number of rows and column
     MATCHED = "Match cell"      # Match the end of the range using match parameters
     CONTIGUOUS = "Contiguous"   # Range extends across the header row and down the first column until a blank cell is found
@@ -68,6 +69,7 @@ class DirectCellMatch(TargetMatch):
     """
     
     cell_match : CellMatch
+    match_type : MatchType
 
     def __post_init__(self):
         assert self.match_type == MatchType.DIRECT
@@ -107,6 +109,18 @@ class NamedRangeMatch(RangeMatch):
         assert self.range_start_match.cell_match.operator == MatchOperator.NAMED_REFERENCE
 
 @dataclass
+class TableRangeMatch(RangeMatch):
+    """Target a named table
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        assert self.range_size == RangeSize.TABLE
+        assert self.match_type == MatchType.DIRECT
+        assert self.range_start_match.cell_match.operator == MatchOperator.NAMED_REFERENCE
+
+
+@dataclass
 class FixedRangeMatch(RangeMatch):
     """Target a range of fixed size
     """
@@ -139,3 +153,18 @@ class ContiguousRangeMatch(RangeMatch):
     def __post_init__(self):
         super().__post_init__()
         assert self.range_size == RangeSize.CONTIGUOUS
+
+# Find the right matcher class
+MATCH_LOOKUP = {
+    MatchTarget.CELL: {
+        MatchType.DIRECT: DirectCellMatch,
+        MatchType.SEPARATE: SeparateCellMatch
+    },
+    MatchTarget.RANGE: {
+        RangeSize.NAMED: NamedRangeMatch,
+        RangeSize.TABLE: TableRangeMatch,
+        RangeSize.FIXED: FixedRangeMatch,
+        RangeSize.MATCHED: MatchedRangeMatch,
+        RangeSize.CONTIGUOUS: ContiguousRangeMatch,
+    }
+}
