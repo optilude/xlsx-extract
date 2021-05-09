@@ -57,6 +57,11 @@ class TargetMatch:
     target : MatchTarget    # looking for a cell or a range
     match_type : MatchType  # one parameter (cell) or two (row, col separate)
 
+    min_row : int
+    min_col : str
+    max_row : int
+    max_col : str
+
 @dataclass
 class DirectCellMatch(TargetMatch):
     """Target a single cell directly
@@ -77,7 +82,6 @@ class SeparateCellMatch(TargetMatch):
     col_match : CellMatch
 
     def __post_init__(self):
-
         assert self.match_type == MatchType.SEPARATE
         assert self.target == MatchTarget.CELL
 
@@ -97,6 +101,7 @@ class NamedRangeMatch(RangeMatch):
     """
 
     def __post_init__(self):
+        super().__post_init__()
         assert self.range_size == RangeSize.NAMED
         assert self.match_type == MatchType.DIRECT
         assert self.range_start_match.cell_match.operator == MatchOperator.NAMED_REFERENCE
@@ -110,6 +115,7 @@ class FixedRangeMatch(RangeMatch):
     range_cols : int
 
     def __post_init__(self):
+        super().__post_init__()
         assert self.range_size == RangeSize.FIXED
         assert self.range_rows != None and self.range_rows > 0
         assert self.range_cols != None and self.range_cols > 0
@@ -122,6 +128,7 @@ class MatchedRangeMatch(RangeMatch):
     range_end_match : TargetMatch
 
     def __post_init__(self):
+        super().__post_init__()
         assert self.range_size == RangeSize.MATCHED
 
 @dataclass
@@ -130,4 +137,5 @@ class ContiguousRangeMatch(RangeMatch):
     """
 
     def __post_init__(self):
+        super().__post_init__()
         assert self.range_size == RangeSize.CONTIGUOUS
