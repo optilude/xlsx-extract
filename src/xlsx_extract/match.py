@@ -3,35 +3,35 @@ from dataclasses import dataclass
 
 class MatchTarget(Enum):
 
-    CELL = "Cell"   # Find a single cell matching the parameter(s)
-    RANGE = "Range" # Find a range matching the parameter(s)
+    CELL = "cell"   # Find a single cell matching the parameter(s)
+    RANGE = "range" # Find a range matching the parameter(s)
 
 class MatchType(Enum):
 
-    DIRECT = "Direct"            # Target matches row and column of parameter
-    SEPARATE = "Separate"        # Separate parameters for row and column
+    DIRECT = "direct"            # Target matches row and column of parameter
+    SEPARATE = "separate"        # Separate parameters for row and column
 
 class MatchOperator(Enum):
 
-    EQUALS = "Equals"
-    GREATER = "Greater Than"
-    GREATER_EQUAL = "Greater Than or Equal To"
-    LESS = "Less Than"
-    LESS_EQUAL = "Less Than or Equal To"
+    EQUALS = "equals"
+    GREATER = "greater than"
+    GREATER_EQUAL = "greater than or equal to"
+    LESS = "less than"
+    LESS_EQUAL = "less than or equal to"
 
-    EMPTY = "Empty"
-    NOT_EMPTY = "Not Empty"
+    EMPTY = "empty"
+    NOT_EMPTY = "not empty"
 
-    REFERENCE = "Cell reference"
-    NAMED_REFERENCE = "Named reference"
+    REFERENCE = "cell reference"
+    NAMED_REFERENCE = "named reference"
 
 class RangeSize(Enum):
 
-    NAMED = "Named"             # Find a named range
-    TABLE = "Table"             # Find a named data table
-    FIXED = "Fixed"             # Specify a number of rows and column
-    MATCHED = "Match cell"      # Match the end of the range using match parameters
-    CONTIGUOUS = "Contiguous"   # Range extends across the header row and down the first column until a blank cell is found
+    NAMED = "named"             # Find a named range
+    TABLE = "table"             # Find a named data table
+    FIXED = "fixed"             # Specify a number of rows and column
+    MATCHED = "match cell"      # Match the end of the range using match parameters
+    CONTIGUOUS = "contiguous"   # Range extends across the header row and down the first column until a blank cell is found
 
 @dataclass
 class SheetMatch:
@@ -49,6 +49,11 @@ class CellMatch:
     operator : MatchOperator
     value : str
 
+    min_row : int = None
+    min_col : str = None
+    max_row : int = None
+    max_col : str = None
+
 @dataclass
 class TargetMatch:
     """Find a target cell or range
@@ -58,18 +63,12 @@ class TargetMatch:
     target : MatchTarget    # looking for a cell or a range
     match_type : MatchType  # one parameter (cell) or two (row, col separate)
 
-    min_row : int
-    min_col : str
-    max_row : int
-    max_col : str
-
 @dataclass
 class DirectCellMatch(TargetMatch):
     """Target a single cell directly
     """
     
     cell_match : CellMatch
-    match_type : MatchType
 
     def __post_init__(self):
         assert self.match_type == MatchType.DIRECT
@@ -90,11 +89,9 @@ class SeparateCellMatch(TargetMatch):
 @dataclass
 class RangeMatch(TargetMatch):
 
-    range_start_match : TargetMatch
     range_size : RangeSize
 
     def __post_init__(self):
-        assert self.match_type == self.range_start_match.match_type
         assert self.target == MatchTarget.RANGE
 
 @dataclass
@@ -102,28 +99,56 @@ class NamedRangeMatch(RangeMatch):
     """Target a named range
     """
 
+    name : str
+
     def __post_init__(self):
         super().__post_init__()
         assert self.range_size == RangeSize.NAMED
         assert self.match_type == MatchType.DIRECT
-        assert self.range_start_match.cell_match.operator == MatchOperator.NAMED_REFERENCE
 
 @dataclass
 class TableRangeMatch(RangeMatch):
     """Target a named table
     """
 
+    name : str
+
     def __post_init__(self):
         super().__post_init__()
         assert self.range_size == RangeSize.TABLE
         assert self.match_type == MatchType.DIRECT
-        assert self.range_start_match.cell_match.operator == MatchOperator.NAMED_REFERENCE
-
 
 @dataclass
-class FixedRangeMatch(RangeMatch):
-    """Target a range of fixed size
+class DirectContiguousRangeMatch(RangeMatch):
+    """Target a contiguous range of cells from a directly targeted start cell
     """
+
+    start_cell_match : CellMatch
+
+    def __post_init__(self):
+        super().__post_init__()
+        assert self.range_size == RangeSize.CONTIGUOUS
+        assert self.match_type == MatchType.DIRECT
+
+@dataclass
+class SeparateContiguousRangeMatch(RangeMatch):
+    """Target a contiguous range of cells from a separately targeted start cell
+    """
+
+    start_cell_row_match : CellMatch
+    start_cell_col_match : CellMatch
+
+    def __post_init__(self):
+        super().__post_init__()
+        assert self.range_size == RangeSize.CONTIGUOUS
+        assert self.match_type == MatchType.SEPARATE
+
+@dataclass
+class DirectFixedRangeMatch(RangeMatch):
+    """Target a range of fixed size from a directly targeted start cell
+    """
+
+    start_cell_match : CellMatch
 
     range_rows : int
     range_cols : int
@@ -131,28 +156,53 @@ class FixedRangeMatch(RangeMatch):
     def __post_init__(self):
         super().__post_init__()
         assert self.range_size == RangeSize.FIXED
-        assert self.range_rows != None and self.range_rows > 0
-        assert self.range_cols != None and self.range_cols > 0
+        assert self.match_type == MatchType.DIRECT
 
 @dataclass
-class MatchedRangeMatch(RangeMatch):
-    """Target a range of fixed size
+class SeparateFixedRangeMatch(RangeMatch):
+    """Target a range of fixed size from a separately targeted start cell
     """
 
-    range_end_match : TargetMatch
+    start_cell_row_match : CellMatch
+    start_cell_col_match : CellMatch
+    
+    range_rows : int
+    range_cols : int
+
+    def __post_init__(self):
+        super().__post_init__()
+        assert self.range_size == RangeSize.FIXED
+        assert self.match_type == MatchType.SEPARATE
+
+@dataclass
+class DirectMatchedRangeMatch(RangeMatch):
+    """Target a range between directly targeted start and end cells
+    """
+
+    start_cell_match : CellMatch
+    end_cell_match : CellMatch
 
     def __post_init__(self):
         super().__post_init__()
         assert self.range_size == RangeSize.MATCHED
+        assert self.match_type == MatchType.DIRECT
 
 @dataclass
-class ContiguousRangeMatch(RangeMatch):
-    """Target a contiguous range of cells
+class SeparateMatchedRangeMatch(RangeMatch):
+    """Target a range between separately targeted start and end cells
     """
+
+    start_cell_row_match : CellMatch
+    start_cell_col_match : CellMatch
+
+    end_cell_row_match : CellMatch
+    end_cell_col_match : CellMatch
 
     def __post_init__(self):
         super().__post_init__()
-        assert self.range_size == RangeSize.CONTIGUOUS
+        assert self.range_size == RangeSize.MATCHED
+        assert self.match_type == MatchType.SEPARATE
+
 
 # Find the right matcher class
 MATCH_LOOKUP = {
@@ -161,10 +211,25 @@ MATCH_LOOKUP = {
         MatchType.SEPARATE: SeparateCellMatch
     },
     MatchTarget.RANGE: {
-        RangeSize.NAMED: NamedRangeMatch,
-        RangeSize.TABLE: TableRangeMatch,
-        RangeSize.FIXED: FixedRangeMatch,
-        RangeSize.MATCHED: MatchedRangeMatch,
-        RangeSize.CONTIGUOUS: ContiguousRangeMatch,
+        RangeSize.NAMED: {
+            MatchType.DIRECT: NamedRangeMatch,
+            MatchType.SEPARATE: None,
+        },
+        RangeSize.TABLE: {
+            MatchType.DIRECT: TableRangeMatch,
+            MatchType.SEPARATE: None,
+        },
+        RangeSize.FIXED: {
+            MatchType.DIRECT: DirectFixedRangeMatch,
+            MatchType.SEPARATE: SeparateFixedRangeMatch
+        },
+        RangeSize.MATCHED: {
+            MatchType.DIRECT: DirectMatchedRangeMatch,
+            MatchType.SEPARATE: SeparateMatchedRangeMatch
+        },
+        RangeSize.CONTIGUOUS: {
+            MatchType.DIRECT: DirectContiguousRangeMatch,
+            MatchType.SEPARATE: SeparateContiguousRangeMatch
+        },
     }
 }
