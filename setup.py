@@ -28,4 +28,7 @@ setuptools.setup(
         "openpyxl-templates",
         "python-dateutil",
     ],
+    tests_require=[
+        'pytest'
+    ]
 )
