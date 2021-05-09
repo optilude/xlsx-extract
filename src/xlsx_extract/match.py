@@ -1,4 +1,8 @@
+import re
+
 from enum import Enum
+from typing import Union
+from datetime import datetime, date, time
 from dataclasses import dataclass
 
 class MatchTarget(Enum):
@@ -13,7 +17,8 @@ class MatchType(Enum):
 
 class MatchOperator(Enum):
 
-    EQUALS = "="
+    EQUAL = "="
+    NOT_EQUAL = "!="
     GREATER = ">"
     GREATER_EQUAL = ">="
     LESS = "<"
@@ -24,8 +29,7 @@ class MatchOperator(Enum):
 
     REGEX = "regex"
 
-    REFERENCE = "cell reference"
-    NAMED_REFERENCE = "named reference"
+    REFERENCE = "reference"
 
 class RangeSize(Enum):
 
@@ -205,6 +209,56 @@ class SeparateMatchedRangeMatch(RangeMatch):
         assert self.range_size == RangeSize.MATCHED
         assert self.match_type == MatchType.SEPARATE
 
+def match_value(
+    data : Union[str, int, float, bool, date, time, datetime],
+    operator : MatchOperator,
+    comparator : Union[str, int, float, bool, date, time, datetime]
+) -> Union[str, int, float, bool, date, time, datetime]:
+    """Use the `operator` to compare `data` with `comparator`.
+
+    Return value is `None` if not matched, or the matched item.
+    For regex matches with match groups, the content of the first
+    match group is returned (as a string).
+    """
+
+    assert operator != MatchOperator.REFERENCE, "Reference match type should not be used for value comparison"
+
+    if operator == MatchOperator.REGEX:
+        assert type(comparator) is str, "Regular expression must be a string"
+        comparator = re.compile(comparator)
+    elif operator not in (MatchOperator.EMPTY, MatchOperator.NOT_EMPTY):
+        assert type(data) is type(comparator), "Cannot compare types %s and %s" % (type(data), type(comparator))
+    
+    if operator == MatchOperator.EMPTY:
+        return "" if (
+            (isinstance(data, str) and len(data) == 0) or
+            (data is None)
+        ) else None
+    elif operator == MatchOperator.NOT_EMPTY:
+        return data if (
+            (isinstance(data, str) and len(data) > 0) or
+            (not isinstance(data, str) and data is not None)
+        ) else None
+    elif operator == MatchOperator.EQUAL:
+        return data if data == comparator else None
+    elif operator == MatchOperator.NOT_EQUAL:
+        return data if data != comparator else None
+    elif operator == MatchOperator.GREATER:
+        return data if data > comparator else None
+    elif operator == MatchOperator.GREATER_EQUAL:
+        return data if data >= comparator else None
+    elif operator == MatchOperator.LESS:
+        return data if data < comparator else None
+    elif operator == MatchOperator.LESS_EQUAL:
+        return data if data <= comparator else None
+    elif operator == MatchOperator.REGEX:
+        match = re.search(comparator, data, re.I)
+        if match is None:
+            return None
+        groups = match.groups()
+        return groups[0] if len(groups) > 0 else data
+    
+    return None  # no match
 
 # Find the right matcher class
 MATCH_LOOKUP = {
@@ -235,3 +289,4 @@ MATCH_LOOKUP = {
         },
     }
 }
+
