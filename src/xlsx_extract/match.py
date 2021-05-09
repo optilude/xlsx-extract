@@ -13,14 +13,16 @@ class MatchType(Enum):
 
 class MatchOperator(Enum):
 
-    EQUALS = "equals"
-    GREATER = "greater than"
-    GREATER_EQUAL = "greater than or equal to"
-    LESS = "less than"
-    LESS_EQUAL = "less than or equal to"
+    EQUALS = "="
+    GREATER = ">"
+    GREATER_EQUAL = ">="
+    LESS = "<"
+    LESS_EQUAL = "<="
 
-    EMPTY = "empty"
-    NOT_EMPTY = "not empty"
+    EMPTY = "is empty"
+    NOT_EMPTY = "is not empty"
+
+    REGEX = "regex"
 
     REFERENCE = "cell reference"
     NAMED_REFERENCE = "named reference"
