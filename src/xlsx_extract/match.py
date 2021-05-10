@@ -5,17 +5,7 @@ from typing import Union
 from datetime import datetime, date, time
 from dataclasses import dataclass
 
-class MatchTarget(Enum):
-
-    CELL = "cell"   # Find a single cell matching the parameter(s)
-    RANGE = "range" # Find a range matching the parameter(s)
-
-class MatchType(Enum):
-
-    DIRECT = "direct"            # Target matches row and column of parameter
-    SEPARATE = "separate"        # Separate parameters for row and column
-
-class MatchOperator(Enum):
+class Operator(Enum):
 
     EQUAL = "="
     NOT_EQUAL = "!="
@@ -29,189 +19,137 @@ class MatchOperator(Enum):
 
     REGEX = "regex"
 
-    REFERENCE = "reference"
-
-class RangeSize(Enum):
-
-    NAMED = "named"             # Find a named range
-    TABLE = "table"             # Find a named data table
-    FIXED = "fixed"             # Specify a number of rows and column
-    MATCHED = "match cell"      # Match the end of the range using match parameters
-    CONTIGUOUS = "contiguous"   # Range extends across the header row and down the first column until a blank cell is found
-
 @dataclass
 class SheetMatch:
     """Parameters to find a sheet
     """
 
-    operator : MatchOperator
+    operator : Operator
     value : str
     
 @dataclass
-class CellMatch:
+class Match:
     """Parameters to find a single cell
     """
 
-    operator : MatchOperator
-    value : str
-
-    min_row : int = None
-    min_col : str = None
-    max_row : int = None
-    max_col : str = None
+    operator : Operator
+    value : str = None
 
 @dataclass
 class TargetMatch:
-    """Find a target cell or range
-    """
 
-    sheet : SheetMatch      # which sheet are we looking in
-    target : MatchTarget    # looking for a cell or a range
-    match_type : MatchType  # one parameter (cell) or two (row, col separate)
+    name : str
+    sheet : SheetMatch
+
+    # Define a search area
+    min_row : int = None
+    min_col : int = None
+    max_row : int = None
+    max_col : int = None
 
 @dataclass
-class DirectCellMatch(TargetMatch):
-    """Target a single cell directly
+class CellMatch(TargetMatch):
+    """Target a single cell
     """
     
-    cell_match : CellMatch
+    # Search by cell reference (name or coordinate)
+    reference : str = None
+
+    # Search by cell contents
+    value : Match = None
+    
+    # Find a cell by contents and use its row, and a separate cell and use its column
+    row_index_value : Match = None
+    col_index_value : Match = None
+
+    # Find value in offset from the matched cell (can be positive or negative)
+    row_offset : int = 0
+    col_offset : int = 0
 
     def __post_init__(self):
-        assert self.match_type == MatchType.DIRECT
-        assert self.target == MatchTarget.CELL
 
-@dataclass
-class SeparateCellMatch(TargetMatch):
-    """Target a single cell with separate row/column matches
-    """
+        assert self.reference is not None or self.value is not None or \
+                (self.row_index_value is not None and self.col_index_value is not None), \
+                "Either cell reference, cell value or row- and column index value must be given to identify a cell"
 
-    row_match : CellMatch
-    col_match : CellMatch
+        if self.reference is not None:
+            assert self.value is None, "Cell value cannot be specified if cell reference is given"
+            assert self.row_index_value is None, "Row index value cannot be specified if cell reference is given"
+            assert self.col_index_value is None, "Column index value cannot be specified if cell reference is given"
+        
+        if self.value is not None:
+            assert self.reference is None, "Cell value cannot be specified if cell value is given"
+            assert self.row_index_value is None, "Row index value cannot be specified if cell value is given"
+            assert self.col_index_value is None, "Column index value cannot be specified if cell value is given"
 
-    def __post_init__(self):
-        assert self.match_type == MatchType.SEPARATE
-        assert self.target == MatchTarget.CELL
+        if self.row_index_value is not None:
+            assert self.col_index_value is not None, "If row index value is specified, column index value must also be spcified"
+        if self.col_index_value is not None:
+            assert self.row_index_value is not None, "If column index value is specified, row index value must also be spcified"
+        
+        if self.row_index_value is not None:
+            assert self.value is None, "Cell value cannot be specified if row and column index are given"
+            assert self.reference is None, "Cell value cannot be specified if row and column index are given"
 
 @dataclass
 class RangeMatch(TargetMatch):
 
-    range_size : RangeSize
+    # Cell reference, defined named or table name
+    reference : str = None
 
-    def __post_init__(self):
-        assert self.target == MatchTarget.RANGE
+    # Find start of table by cell
+    start_cell : CellMatch = None
 
-@dataclass
-class NamedRangeMatch(RangeMatch):
-    """Target a named range
-    """
-
-    name : str
-
-    def __post_init__(self):
-        super().__post_init__()
-        assert self.range_size == RangeSize.NAMED
-        assert self.match_type == MatchType.DIRECT
-
-@dataclass
-class TableRangeMatch(RangeMatch):
-    """Target a named table
-    """
-
-    name : str
-
-    def __post_init__(self):
-        super().__post_init__()
-        assert self.range_size == RangeSize.TABLE
-        assert self.match_type == MatchType.DIRECT
-
-@dataclass
-class DirectContiguousRangeMatch(RangeMatch):
-    """Target a contiguous range of cells from a directly targeted start cell
-    """
-
-    start_cell_match : CellMatch
-
-    def __post_init__(self):
-        super().__post_init__()
-        assert self.range_size == RangeSize.CONTIGUOUS
-        assert self.match_type == MatchType.DIRECT
-
-@dataclass
-class SeparateContiguousRangeMatch(RangeMatch):
-    """Target a contiguous range of cells from a separately targeted start cell
-    """
-
-    start_cell_row_match : CellMatch
-    start_cell_col_match : CellMatch
-
-    def __post_init__(self):
-        super().__post_init__()
-        assert self.range_size == RangeSize.CONTIGUOUS
-        assert self.match_type == MatchType.SEPARATE
-
-@dataclass
-class DirectFixedRangeMatch(RangeMatch):
-    """Target a range of fixed size from a directly targeted start cell
-    """
-
-    start_cell_match : CellMatch
-
-    range_rows : int
-    range_cols : int
-
-    def __post_init__(self):
-        super().__post_init__()
-        assert self.range_size == RangeSize.FIXED
-        assert self.match_type == MatchType.DIRECT
-
-@dataclass
-class SeparateFixedRangeMatch(RangeMatch):
-    """Target a range of fixed size from a separately targeted start cell
-    """
-
-    start_cell_row_match : CellMatch
-    start_cell_col_match : CellMatch
+    # Range extends until specified end cell
+    end_cell : CellMatch = None
     
-    range_rows : int
-    range_cols : int
+    # Range extends for a set number of rows and columns
+    rows : int = None
+    cols : int = None
+
+    # Range extends until blank header row and blank first column (or later)
+    # As a special case, allows top-left cell to be blank if the rest of the header is defined
+    contiguous : bool = False
 
     def __post_init__(self):
-        super().__post_init__()
-        assert self.range_size == RangeSize.FIXED
-        assert self.match_type == MatchType.SEPARATE
 
-@dataclass
-class DirectMatchedRangeMatch(RangeMatch):
-    """Target a range between directly targeted start and end cells
-    """
+        assert self.reference is not None or self.start_cell is not None, \
+            "Either a reference or a start cell must be specified"
 
-    start_cell_match : CellMatch
-    end_cell_match : CellMatch
+        if self.reference is not None:
+            assert self.start_cell is None, "Start cell cannot be specified if a reference is used"
+            assert self.end_cell is None, "End cell cannot be specified if a reference is used"
+            assert self.rows is None, "Row count cannot be specified if a reference is used"
+            assert self.cols is None, "Column count cannot be specified if a reference is used"
+            assert self.contiguous == False, "Contiguousness cannot be specified if a reference is used"
+        
+        if self.start_cell is not None:
+            assert self.reference is None, "A cell reference cannot be specified if a start cell is given"
+            
+            # Default to contiguous mode if neither end cell or rows/cols are specified
+            if self.end_cell is None and self.rows is None and self.cols is None:
+                self.contiguous = True
 
-    def __post_init__(self):
-        super().__post_init__()
-        assert self.range_size == RangeSize.MATCHED
-        assert self.match_type == MatchType.DIRECT
+            if self.end_cell is not None:
+                assert self.rows is None and self.cols is None, "Fixed row and column counts cannot be specified if an end cell is given"
+                assert self.contiguous == False, "Contiguousness cannot be specified if an end cell is given"
+            
+            if self.rows is not None:
+                assert self.cols is not None, "If a fixed row count is given, a fixed column count must also be specified"
+            if self.cols is not None:
+                assert self.rows is not None, "If a fixed column count is given, a fixed row count must also be specified"
 
-@dataclass
-class SeparateMatchedRangeMatch(RangeMatch):
-    """Target a range between separately targeted start and end cells
-    """
+            if self.rows is not None and self.cols is not None:
+                assert self.end_cell is None, "An end cell cannot be specified if fixed row and column counts are given"
+                assert self.contiguous == False, "Contiguousness cannot be specified if fixed row and column counts are given"
 
-    start_cell_row_match : CellMatch
-    start_cell_col_match : CellMatch
-
-    end_cell_row_match : CellMatch
-    end_cell_col_match : CellMatch
-
-    def __post_init__(self):
-        super().__post_init__()
-        assert self.range_size == RangeSize.MATCHED
-        assert self.match_type == MatchType.SEPARATE
+            if self.contiguous:
+                assert self.rows is None and self.cols is None, "Fixed row and column counts cannot be specified if contiguousness is specified"
+                assert self.end_cell is None, "An end cell cannot be specified if contiguousness is specified"
 
 def match_value(
     data : Union[str, int, float, bool, date, time, datetime],
-    operator : MatchOperator,
+    operator : Operator,
     comparator : Union[str, int, float, bool, date, time, datetime]
 ) -> Union[str, int, float, bool, date, time, datetime]:
     """Use the `operator` to compare `data` with `comparator`.
@@ -221,36 +159,34 @@ def match_value(
     match group is returned (as a string).
     """
 
-    assert operator != MatchOperator.REFERENCE, "Reference match type should not be used for value comparison"
-
-    if operator == MatchOperator.REGEX:
+    if operator == Operator.REGEX:
         assert type(comparator) is str, "Regular expression must be a string"
-    elif operator not in (MatchOperator.EMPTY, MatchOperator.NOT_EMPTY):
+    elif operator not in (Operator.EMPTY, Operator.NOT_EMPTY):
         assert type(data) is type(comparator), "Cannot compare types %s and %s" % (type(data), type(comparator))
     
-    if operator == MatchOperator.EMPTY:
+    if operator == Operator.EMPTY:
         return "" if (
             (isinstance(data, str) and len(data) == 0) or
             (data is None)
         ) else None
-    elif operator == MatchOperator.NOT_EMPTY:
+    elif operator == Operator.NOT_EMPTY:
         return data if (
             (isinstance(data, str) and len(data) > 0) or
             (not isinstance(data, str) and data is not None)
         ) else None
-    elif operator == MatchOperator.EQUAL:
+    elif operator == Operator.EQUAL:
         return data if data == comparator else None
-    elif operator == MatchOperator.NOT_EQUAL:
+    elif operator == Operator.NOT_EQUAL:
         return data if data != comparator else None
-    elif operator == MatchOperator.GREATER:
+    elif operator == Operator.GREATER:
         return data if data > comparator else None
-    elif operator == MatchOperator.GREATER_EQUAL:
+    elif operator == Operator.GREATER_EQUAL:
         return data if data >= comparator else None
-    elif operator == MatchOperator.LESS:
+    elif operator == Operator.LESS:
         return data if data < comparator else None
-    elif operator == MatchOperator.LESS_EQUAL:
+    elif operator == Operator.LESS_EQUAL:
         return data if data <= comparator else None
-    elif operator == MatchOperator.REGEX:
+    elif operator == Operator.REGEX:
         match = re.search(comparator, data, re.IGNORECASE)
         if match is None:
             return None
@@ -258,34 +194,4 @@ def match_value(
         return groups[0] if len(groups) > 0 else data
     
     return None  # no match
-
-# Find the right matcher class
-MATCH_LOOKUP = {
-    MatchTarget.CELL: {
-        MatchType.DIRECT: DirectCellMatch,
-        MatchType.SEPARATE: SeparateCellMatch
-    },
-    MatchTarget.RANGE: {
-        RangeSize.NAMED: {
-            MatchType.DIRECT: NamedRangeMatch,
-            MatchType.SEPARATE: None,
-        },
-        RangeSize.TABLE: {
-            MatchType.DIRECT: TableRangeMatch,
-            MatchType.SEPARATE: None,
-        },
-        RangeSize.FIXED: {
-            MatchType.DIRECT: DirectFixedRangeMatch,
-            MatchType.SEPARATE: SeparateFixedRangeMatch
-        },
-        RangeSize.MATCHED: {
-            MatchType.DIRECT: DirectMatchedRangeMatch,
-            MatchType.SEPARATE: SeparateMatchedRangeMatch
-        },
-        RangeSize.CONTIGUOUS: {
-            MatchType.DIRECT: DirectContiguousRangeMatch,
-            MatchType.SEPARATE: SeparateContiguousRangeMatch
-        },
-    }
-}
 
