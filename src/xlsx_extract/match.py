@@ -41,6 +41,9 @@ class TargetMatch:
     name : str
     sheet : SheetMatch
 
+    # Search by cell reference (name or coordinate)
+    reference : str = None
+
     # Define a search area
     min_row : int = None
     min_col : int = None
@@ -52,9 +55,6 @@ class CellMatch(TargetMatch):
     """Target a single cell
     """
     
-    # Search by cell reference (name or coordinate)
-    reference : str = None
-
     # Search by cell contents
     value : Match = None
     
@@ -93,9 +93,6 @@ class CellMatch(TargetMatch):
 
 @dataclass
 class RangeMatch(TargetMatch):
-
-    # Cell reference, defined named or table name
-    reference : str = None
 
     # Find start of table by cell
     start_cell : CellMatch = None
