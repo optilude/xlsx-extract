@@ -225,7 +225,6 @@ def match_value(
 
     if operator == MatchOperator.REGEX:
         assert type(comparator) is str, "Regular expression must be a string"
-        comparator = re.compile(comparator)
     elif operator not in (MatchOperator.EMPTY, MatchOperator.NOT_EMPTY):
         assert type(data) is type(comparator), "Cannot compare types %s and %s" % (type(data), type(comparator))
     
@@ -252,7 +251,7 @@ def match_value(
     elif operator == MatchOperator.LESS_EQUAL:
         return data if data <= comparator else None
     elif operator == MatchOperator.REGEX:
-        match = re.search(comparator, data, re.I)
+        match = re.search(comparator, data, re.IGNORECASE)
         if match is None:
             return None
         groups = match.groups()
