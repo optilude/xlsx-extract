@@ -70,26 +70,26 @@ class CellMatch(TargetMatch):
 
         assert self.reference is not None or self.value is not None or \
                 (self.row_index_value is not None and self.col_index_value is not None), \
-                "Either cell reference, cell value or row- and column index value must be given to identify a cell"
+                "%s: Either cell reference, cell value or row- and column index value must be given to identify a cell" % self.name
 
         if self.reference is not None:
-            assert self.value is None, "Cell value cannot be specified if cell reference is given"
-            assert self.row_index_value is None, "Row index value cannot be specified if cell reference is given"
-            assert self.col_index_value is None, "Column index value cannot be specified if cell reference is given"
+            assert self.value is None, "%s: Cell value cannot be specified if cell reference is given" % self.name
+            assert self.row_index_value is None, "%s: Row index value cannot be specified if cell reference is given" % self.name
+            assert self.col_index_value is None, "%s: Column index value cannot be specified if cell reference is given" % self.name
         
         if self.value is not None:
-            assert self.reference is None, "Cell value cannot be specified if cell value is given"
-            assert self.row_index_value is None, "Row index value cannot be specified if cell value is given"
-            assert self.col_index_value is None, "Column index value cannot be specified if cell value is given"
+            assert self.reference is None, "%s: Cell value cannot be specified if cell value is given" % self.name
+            assert self.row_index_value is None, "%s: Row index value cannot be specified if cell value is given" % self.name
+            assert self.col_index_value is None, "%s: Column index value cannot be specified if cell value is given" % self.name
 
         if self.row_index_value is not None:
-            assert self.col_index_value is not None, "If row index value is specified, column index value must also be spcified"
+            assert self.col_index_value is not None, "%s: If row index value is specified, column index value must also be spcified" % self.name
         if self.col_index_value is not None:
-            assert self.row_index_value is not None, "If column index value is specified, row index value must also be spcified"
+            assert self.row_index_value is not None, "%s: If column index value is specified, row index value must also be spcified" % self.name
         
         if self.row_index_value is not None:
-            assert self.value is None, "Cell value cannot be specified if row and column index are given"
-            assert self.reference is None, "Cell value cannot be specified if row and column index are given"
+            assert self.value is None, "%s: Cell value cannot be specified if row and column index are given" % self.name
+            assert self.reference is None, "%s: Cell value cannot be specified if row and column index are given" % self.name
 
 @dataclass
 class RangeMatch(TargetMatch):
@@ -111,38 +111,38 @@ class RangeMatch(TargetMatch):
     def __post_init__(self):
 
         assert self.reference is not None or self.start_cell is not None, \
-            "Either a reference or a start cell must be specified"
+            "%s: Either a reference or a start cell must be specified" % self.name
 
         if self.reference is not None:
-            assert self.start_cell is None, "Start cell cannot be specified if a reference is used"
-            assert self.end_cell is None, "End cell cannot be specified if a reference is used"
-            assert self.rows is None, "Row count cannot be specified if a reference is used"
-            assert self.cols is None, "Column count cannot be specified if a reference is used"
-            assert self.contiguous == False, "Contiguousness cannot be specified if a reference is used"
+            assert self.start_cell is None, "%s: Start cell cannot be specified if a reference is used" % self.name
+            assert self.end_cell is None, "%s: End cell cannot be specified if a reference is used" % self.name
+            assert self.rows is None, "%s: Row count cannot be specified if a reference is used" % self.name
+            assert self.cols is None, "%s: Column count cannot be specified if a reference is used" % self.name
+            assert self.contiguous == False, "%s: Contiguousness cannot be specified if a reference is used" % self.name
         
         if self.start_cell is not None:
-            assert self.reference is None, "A cell reference cannot be specified if a start cell is given"
+            assert self.reference is None, "%s: A cell reference cannot be specified if a start cell is given" % self.name
             
             # Default to contiguous mode if neither end cell or rows/cols are specified
             if self.end_cell is None and self.rows is None and self.cols is None:
                 self.contiguous = True
 
             if self.end_cell is not None:
-                assert self.rows is None and self.cols is None, "Fixed row and column counts cannot be specified if an end cell is given"
-                assert self.contiguous == False, "Contiguousness cannot be specified if an end cell is given"
+                assert self.rows is None and self.cols is None, "%s: Fixed row and column counts cannot be specified if an end cell is given" % self.name
+                assert self.contiguous == False, "%s: Contiguousness cannot be specified if an end cell is given" % self.name
             
             if self.rows is not None:
-                assert self.cols is not None, "If a fixed row count is given, a fixed column count must also be specified"
+                assert self.cols is not None, "%s: If a fixed row count is given, a fixed column count must also be specified" % self.name
             if self.cols is not None:
-                assert self.rows is not None, "If a fixed column count is given, a fixed row count must also be specified"
+                assert self.rows is not None, "%s: If a fixed column count is given, a fixed row count must also be specified" % self.name
 
             if self.rows is not None and self.cols is not None:
-                assert self.end_cell is None, "An end cell cannot be specified if fixed row and column counts are given"
-                assert self.contiguous == False, "Contiguousness cannot be specified if fixed row and column counts are given"
+                assert self.end_cell is None, "%s: An end cell cannot be specified if fixed row and column counts are given" % self.name
+                assert self.contiguous == False, "%s: Contiguousness cannot be specified if fixed row and column counts are given" % self.name
 
             if self.contiguous:
-                assert self.rows is None and self.cols is None, "Fixed row and column counts cannot be specified if contiguousness is specified"
-                assert self.end_cell is None, "An end cell cannot be specified if contiguousness is specified"
+                assert self.rows is None and self.cols is None, "%s: Fixed row and column counts cannot be specified if contiguousness is specified" % self.name
+                assert self.end_cell is None, "%s: An end cell cannot be specified if contiguousness is specified" % self.name
 
 def match_value(
     data : Union[str, int, float, bool, date, time, datetime],
