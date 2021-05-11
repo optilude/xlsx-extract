@@ -22,14 +22,14 @@ def test_construct_cell_match():
     match.CellMatch(
         name="A",
         sheet=sheet,
-        value=match.Match(operator=match.Operator.NOT_EMPTY),
+        value=match.Comparator(operator=match.Operator.NOT_EMPTY),
     )
 
     match.CellMatch(
         name="A",
         sheet=sheet,
-        row_index_value=match.Match(operator=match.Operator.NOT_EMPTY),
-        col_index_value=match.Match(operator=match.Operator.NOT_EMPTY),
+        row_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
+        col_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
     )
 
     # No match criteria
@@ -45,7 +45,7 @@ def test_construct_cell_match():
             name="F",
             sheet=sheet,
             reference="A3",
-            value=match.Match(operator=match.Operator.NOT_EMPTY),
+            value=match.Comparator(operator=match.Operator.NOT_EMPTY),
         )
     
     # Row without column index and vice-versa
@@ -53,16 +53,16 @@ def test_construct_cell_match():
         match.CellMatch(
             name="A",
             sheet=sheet,
-            row_index_value=match.Match(operator=match.Operator.NOT_EMPTY),
-            # col_index_value=match.Match(operator=match.Operator.NOT_EMPTY),
+            row_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
+            # col_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
         )
     
     with pytest.raises(AssertionError):
         match.CellMatch(
             name="A",
             sheet=sheet,
-            # row_index_value=match.Match(operator=match.Operator.NOT_EMPTY),
-            col_index_value=match.Match(operator=match.Operator.NOT_EMPTY),
+            # row_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
+            col_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
         )
     
 def test_construct_range_match():
@@ -153,159 +153,159 @@ def test_construct_range_match():
 
 def test_match_value_requires_regex_to_be_string():
     with pytest.raises(AssertionError):
-        match.match_value(data="foo", operator=match.Operator.REGEX, comparator=1)
+        match.match_value(data="foo", operator=match.Operator.REGEX, value=1)
 
 def test_match_value_requires_consistent_types():
     with pytest.raises(AssertionError):
-        match.match_value(data="1", operator=match.Operator.EQUAL, comparator=1)
+        match.match_value(data="1", operator=match.Operator.EQUAL, value=1)
 
 def test_match_empty():
-    assert match.match_value(data="", operator=match.Operator.EMPTY, comparator=None) == ""
-    assert match.match_value(data=None, operator=match.Operator.EMPTY, comparator=None) == ""  # yes, indeed
+    assert match.match_value(data="", operator=match.Operator.EMPTY, value=None) == ""
+    assert match.match_value(data=None, operator=match.Operator.EMPTY, value=None) == ""  # yes, indeed
 
-    assert match.match_value(data="a", operator=match.Operator.EMPTY, comparator=None) == None
-    assert match.match_value(data=1, operator=match.Operator.EMPTY, comparator=None) == None
+    assert match.match_value(data="a", operator=match.Operator.EMPTY, value=None) == None
+    assert match.match_value(data=1, operator=match.Operator.EMPTY, value=None) == None
 
 def test_match_not_empty():
-    assert match.match_value(data="", operator=match.Operator.NOT_EMPTY, comparator=None) == None
-    assert match.match_value(data=None, operator=match.Operator.NOT_EMPTY, comparator=None) == None
+    assert match.match_value(data="", operator=match.Operator.NOT_EMPTY, value=None) == None
+    assert match.match_value(data=None, operator=match.Operator.NOT_EMPTY, value=None) == None
 
-    assert match.match_value(data="a", operator=match.Operator.NOT_EMPTY, comparator=None) == "a"
-    assert match.match_value(data=1, operator=match.Operator.NOT_EMPTY, comparator=None) == 1
+    assert match.match_value(data="a", operator=match.Operator.NOT_EMPTY, value=None) == "a"
+    assert match.match_value(data=1, operator=match.Operator.NOT_EMPTY, value=None) == 1
 
 def test_match_value_equal():
-    assert match.match_value(data="foo", operator=match.Operator.EQUAL, comparator="foo") == "foo"
-    assert match.match_value(data=1, operator=match.Operator.EQUAL, comparator=1) == 1
-    assert match.match_value(data=1.2, operator=match.Operator.EQUAL, comparator=1.2) == 1.2
-    assert match.match_value(data=True, operator=match.Operator.EQUAL, comparator=True) == True
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.EQUAL, comparator=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 2)
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.EQUAL, comparator=datetime.time(14, 0)) == datetime.time(14, 0)
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.EQUAL, comparator=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
+    assert match.match_value(data="foo", operator=match.Operator.EQUAL, value="foo") == "foo"
+    assert match.match_value(data=1, operator=match.Operator.EQUAL, value=1) == 1
+    assert match.match_value(data=1.2, operator=match.Operator.EQUAL, value=1.2) == 1.2
+    assert match.match_value(data=True, operator=match.Operator.EQUAL, value=True) == True
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.EQUAL, value=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 2)
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.EQUAL, value=datetime.time(14, 0)) == datetime.time(14, 0)
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.EQUAL, value=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
 
-    assert match.match_value(data="bar", operator=match.Operator.EQUAL, comparator="foo") == None
-    assert match.match_value(data=2, operator=match.Operator.EQUAL, comparator=1) == None
-    assert match.match_value(data=2.2, operator=match.Operator.EQUAL, comparator=1.2) == None
-    assert match.match_value(data=False, operator=match.Operator.EQUAL, comparator=True) == None
-    assert match.match_value(data=datetime.date(2020, 1, 3), operator=match.Operator.EQUAL, comparator=datetime.date(2020, 1, 2)) == None
-    assert match.match_value(data=datetime.time(14, 1), operator=match.Operator.EQUAL, comparator=datetime.time(14, 0)) == None
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 1), operator=match.Operator.EQUAL, comparator=datetime.datetime(2020, 1, 2, 14, 0)) == None
+    assert match.match_value(data="bar", operator=match.Operator.EQUAL, value="foo") == None
+    assert match.match_value(data=2, operator=match.Operator.EQUAL, value=1) == None
+    assert match.match_value(data=2.2, operator=match.Operator.EQUAL, value=1.2) == None
+    assert match.match_value(data=False, operator=match.Operator.EQUAL, value=True) == None
+    assert match.match_value(data=datetime.date(2020, 1, 3), operator=match.Operator.EQUAL, value=datetime.date(2020, 1, 2)) == None
+    assert match.match_value(data=datetime.time(14, 1), operator=match.Operator.EQUAL, value=datetime.time(14, 0)) == None
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 1), operator=match.Operator.EQUAL, value=datetime.datetime(2020, 1, 2, 14, 0)) == None
 
 def test_match_value_not_equal():
-    assert match.match_value(data="bar", operator=match.Operator.NOT_EQUAL, comparator="foo") == "bar"
-    assert match.match_value(data=2, operator=match.Operator.NOT_EQUAL, comparator=1) == 2
-    assert match.match_value(data=2.2, operator=match.Operator.NOT_EQUAL, comparator=1.2) == 2.2
-    assert match.match_value(data=False, operator=match.Operator.NOT_EQUAL, comparator=True) == False
-    assert match.match_value(data=datetime.date(2020, 1, 3), operator=match.Operator.NOT_EQUAL, comparator=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 3)
-    assert match.match_value(data=datetime.time(14, 1), operator=match.Operator.NOT_EQUAL, comparator=datetime.time(14, 0)) == datetime.time(14, 1)
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 1), operator=match.Operator.NOT_EQUAL, comparator=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 1)
+    assert match.match_value(data="bar", operator=match.Operator.NOT_EQUAL, value="foo") == "bar"
+    assert match.match_value(data=2, operator=match.Operator.NOT_EQUAL, value=1) == 2
+    assert match.match_value(data=2.2, operator=match.Operator.NOT_EQUAL, value=1.2) == 2.2
+    assert match.match_value(data=False, operator=match.Operator.NOT_EQUAL, value=True) == False
+    assert match.match_value(data=datetime.date(2020, 1, 3), operator=match.Operator.NOT_EQUAL, value=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 3)
+    assert match.match_value(data=datetime.time(14, 1), operator=match.Operator.NOT_EQUAL, value=datetime.time(14, 0)) == datetime.time(14, 1)
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 1), operator=match.Operator.NOT_EQUAL, value=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 1)
     
-    assert match.match_value(data="foo", operator=match.Operator.NOT_EQUAL, comparator="foo") == None
-    assert match.match_value(data=1, operator=match.Operator.NOT_EQUAL, comparator=1) == None
-    assert match.match_value(data=1.2, operator=match.Operator.NOT_EQUAL, comparator=1.2) == None
-    assert match.match_value(data=True, operator=match.Operator.NOT_EQUAL, comparator=True) == None
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.NOT_EQUAL, comparator=datetime.date(2020, 1, 2)) == None
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.NOT_EQUAL, comparator=datetime.time(14, 0)) == None
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.NOT_EQUAL, comparator=datetime.datetime(2020, 1, 2, 14, 0)) == None
+    assert match.match_value(data="foo", operator=match.Operator.NOT_EQUAL, value="foo") == None
+    assert match.match_value(data=1, operator=match.Operator.NOT_EQUAL, value=1) == None
+    assert match.match_value(data=1.2, operator=match.Operator.NOT_EQUAL, value=1.2) == None
+    assert match.match_value(data=True, operator=match.Operator.NOT_EQUAL, value=True) == None
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.NOT_EQUAL, value=datetime.date(2020, 1, 2)) == None
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.NOT_EQUAL, value=datetime.time(14, 0)) == None
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.NOT_EQUAL, value=datetime.datetime(2020, 1, 2, 14, 0)) == None
 
 def test_match_value_greater_than():
-    assert match.match_value(data="foo", operator=match.Operator.GREATER, comparator="boo") == "foo"
-    assert match.match_value(data=2, operator=match.Operator.GREATER, comparator=1) == 2
-    assert match.match_value(data=1.2, operator=match.Operator.GREATER, comparator=1.1) == 1.2
-    # assert match.match_value(data=True, operator=match.Operator.GREATER, comparator=True) == True
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER, comparator=datetime.date(2020, 1, 1)) == datetime.date(2020, 1, 2)
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER, comparator=datetime.time(13, 0)) == datetime.time(14, 0)
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER, comparator=datetime.datetime(2020, 1, 2, 13, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
+    assert match.match_value(data="foo", operator=match.Operator.GREATER, value="boo") == "foo"
+    assert match.match_value(data=2, operator=match.Operator.GREATER, value=1) == 2
+    assert match.match_value(data=1.2, operator=match.Operator.GREATER, value=1.1) == 1.2
+    # assert match.match_value(data=True, operator=match.Operator.GREATER, value=True) == True
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER, value=datetime.date(2020, 1, 1)) == datetime.date(2020, 1, 2)
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER, value=datetime.time(13, 0)) == datetime.time(14, 0)
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER, value=datetime.datetime(2020, 1, 2, 13, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
 
-    assert match.match_value(data="foo", operator=match.Operator.GREATER, comparator="foo") == None
-    assert match.match_value(data=1, operator=match.Operator.GREATER, comparator=1) == None
-    assert match.match_value(data=1.2, operator=match.Operator.GREATER, comparator=1.2) == None
-    assert match.match_value(data=True, operator=match.Operator.GREATER, comparator=True) == None
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER, comparator=datetime.date(2020, 1, 2)) == None
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER, comparator=datetime.time(14, 0)) == None
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER, comparator=datetime.datetime(2020, 1, 2, 14, 0)) == None
+    assert match.match_value(data="foo", operator=match.Operator.GREATER, value="foo") == None
+    assert match.match_value(data=1, operator=match.Operator.GREATER, value=1) == None
+    assert match.match_value(data=1.2, operator=match.Operator.GREATER, value=1.2) == None
+    assert match.match_value(data=True, operator=match.Operator.GREATER, value=True) == None
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER, value=datetime.date(2020, 1, 2)) == None
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER, value=datetime.time(14, 0)) == None
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER, value=datetime.datetime(2020, 1, 2, 14, 0)) == None
 
-    assert match.match_value(data="foo", operator=match.Operator.GREATER, comparator="goo") == None
-    assert match.match_value(data=1, operator=match.Operator.GREATER, comparator=2) == None
-    assert match.match_value(data=1.2, operator=match.Operator.GREATER, comparator=1.3) == None
-    # assert match.match_value(data=True, operator=match.Operator.GREATER, comparator=True) == None
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER, comparator=datetime.date(2020, 1, 3)) == None
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER, comparator=datetime.time(14, 1)) == None
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER, comparator=datetime.datetime(2020, 1, 2, 14, 1)) == None
+    assert match.match_value(data="foo", operator=match.Operator.GREATER, value="goo") == None
+    assert match.match_value(data=1, operator=match.Operator.GREATER, value=2) == None
+    assert match.match_value(data=1.2, operator=match.Operator.GREATER, value=1.3) == None
+    # assert match.match_value(data=True, operator=match.Operator.GREATER, value=True) == None
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER, value=datetime.date(2020, 1, 3)) == None
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER, value=datetime.time(14, 1)) == None
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER, value=datetime.datetime(2020, 1, 2, 14, 1)) == None
 
 def test_match_value_greater_than_equal():
-    assert match.match_value(data="foo", operator=match.Operator.GREATER_EQUAL, comparator="boo") == "foo"
-    assert match.match_value(data=2, operator=match.Operator.GREATER_EQUAL, comparator=1) == 2
-    assert match.match_value(data=1.2, operator=match.Operator.GREATER_EQUAL, comparator=1.1) == 1.2
-    # assert match.match_value(data=True, operator=match.Operator.GREATER_EQUAL, comparator=True) == True
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER_EQUAL, comparator=datetime.date(2020, 1, 1)) == datetime.date(2020, 1, 2)
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER_EQUAL, comparator=datetime.time(13, 0)) == datetime.time(14, 0)
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER_EQUAL, comparator=datetime.datetime(2020, 1, 2, 13, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
+    assert match.match_value(data="foo", operator=match.Operator.GREATER_EQUAL, value="boo") == "foo"
+    assert match.match_value(data=2, operator=match.Operator.GREATER_EQUAL, value=1) == 2
+    assert match.match_value(data=1.2, operator=match.Operator.GREATER_EQUAL, value=1.1) == 1.2
+    # assert match.match_value(data=True, operator=match.Operator.GREATER_EQUAL, value=True) == True
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER_EQUAL, value=datetime.date(2020, 1, 1)) == datetime.date(2020, 1, 2)
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER_EQUAL, value=datetime.time(13, 0)) == datetime.time(14, 0)
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER_EQUAL, value=datetime.datetime(2020, 1, 2, 13, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
 
-    assert match.match_value(data="foo", operator=match.Operator.GREATER_EQUAL, comparator="foo") == "foo"
-    assert match.match_value(data=1, operator=match.Operator.GREATER_EQUAL, comparator=1) == 1
-    assert match.match_value(data=1.2, operator=match.Operator.GREATER_EQUAL, comparator=1.2) == 1.2
-    assert match.match_value(data=True, operator=match.Operator.GREATER_EQUAL, comparator=True) == True
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER_EQUAL, comparator=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 2)
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER_EQUAL, comparator=datetime.time(14, 0)) == datetime.time(14, 0)
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER_EQUAL, comparator=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
+    assert match.match_value(data="foo", operator=match.Operator.GREATER_EQUAL, value="foo") == "foo"
+    assert match.match_value(data=1, operator=match.Operator.GREATER_EQUAL, value=1) == 1
+    assert match.match_value(data=1.2, operator=match.Operator.GREATER_EQUAL, value=1.2) == 1.2
+    assert match.match_value(data=True, operator=match.Operator.GREATER_EQUAL, value=True) == True
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER_EQUAL, value=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 2)
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER_EQUAL, value=datetime.time(14, 0)) == datetime.time(14, 0)
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER_EQUAL, value=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
 
-    assert match.match_value(data="foo", operator=match.Operator.GREATER_EQUAL, comparator="goo") == None
-    assert match.match_value(data=1, operator=match.Operator.GREATER_EQUAL, comparator=2) == None
-    assert match.match_value(data=1.2, operator=match.Operator.GREATER_EQUAL, comparator=1.3) == None
-    # assert match.match_value(data=True, operator=match.Operator.GREATER_EQUAL, comparator=True) == None
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER_EQUAL, comparator=datetime.date(2020, 1, 3)) == None
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER_EQUAL, comparator=datetime.time(14, 1)) == None
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER_EQUAL, comparator=datetime.datetime(2020, 1, 2, 14, 1)) == None
+    assert match.match_value(data="foo", operator=match.Operator.GREATER_EQUAL, value="goo") == None
+    assert match.match_value(data=1, operator=match.Operator.GREATER_EQUAL, value=2) == None
+    assert match.match_value(data=1.2, operator=match.Operator.GREATER_EQUAL, value=1.3) == None
+    # assert match.match_value(data=True, operator=match.Operator.GREATER_EQUAL, value=True) == None
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.GREATER_EQUAL, value=datetime.date(2020, 1, 3)) == None
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.GREATER_EQUAL, value=datetime.time(14, 1)) == None
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.GREATER_EQUAL, value=datetime.datetime(2020, 1, 2, 14, 1)) == None
 
 def test_match_value_less_than():
-    assert match.match_value(data="foo", operator=match.Operator.LESS, comparator="goo") == "foo"
-    assert match.match_value(data=2, operator=match.Operator.LESS, comparator=3) == 2
-    assert match.match_value(data=1.2, operator=match.Operator.LESS, comparator=1.3) == 1.2
-    # assert match.match_value(data=True, operator=match.Operator.LESS, comparator=True) == True
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, comparator=datetime.date(2020, 1, 3)) == datetime.date(2020, 1, 2)
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, comparator=datetime.time(15, 0)) == datetime.time(14, 0)
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, comparator=datetime.datetime(2020, 1, 2, 15, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
+    assert match.match_value(data="foo", operator=match.Operator.LESS, value="goo") == "foo"
+    assert match.match_value(data=2, operator=match.Operator.LESS, value=3) == 2
+    assert match.match_value(data=1.2, operator=match.Operator.LESS, value=1.3) == 1.2
+    # assert match.match_value(data=True, operator=match.Operator.LESS, value=True) == True
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, value=datetime.date(2020, 1, 3)) == datetime.date(2020, 1, 2)
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, value=datetime.time(15, 0)) == datetime.time(14, 0)
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, value=datetime.datetime(2020, 1, 2, 15, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
 
-    assert match.match_value(data="foo", operator=match.Operator.LESS, comparator="foo") == None
-    assert match.match_value(data=1, operator=match.Operator.LESS, comparator=1) == None
-    assert match.match_value(data=1.2, operator=match.Operator.LESS, comparator=1.2) == None
-    assert match.match_value(data=True, operator=match.Operator.LESS, comparator=True) == None
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, comparator=datetime.date(2020, 1, 2)) == None
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, comparator=datetime.time(14, 0)) == None
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, comparator=datetime.datetime(2020, 1, 2, 14, 0)) == None
+    assert match.match_value(data="foo", operator=match.Operator.LESS, value="foo") == None
+    assert match.match_value(data=1, operator=match.Operator.LESS, value=1) == None
+    assert match.match_value(data=1.2, operator=match.Operator.LESS, value=1.2) == None
+    assert match.match_value(data=True, operator=match.Operator.LESS, value=True) == None
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, value=datetime.date(2020, 1, 2)) == None
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, value=datetime.time(14, 0)) == None
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, value=datetime.datetime(2020, 1, 2, 14, 0)) == None
 
-    assert match.match_value(data="foo", operator=match.Operator.LESS, comparator="boo") == None
-    assert match.match_value(data=2, operator=match.Operator.LESS, comparator=1) == None
-    assert match.match_value(data=1.2, operator=match.Operator.LESS, comparator=1.1) == None
-    # assert match.match_value(data=True, operator=match.Operator.LESS, comparator=True) == None
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, comparator=datetime.date(2020, 1, 1)) == None
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, comparator=datetime.time(13, 0)) == None
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, comparator=datetime.datetime(2020, 1, 2, 13, 0)) == None
+    assert match.match_value(data="foo", operator=match.Operator.LESS, value="boo") == None
+    assert match.match_value(data=2, operator=match.Operator.LESS, value=1) == None
+    assert match.match_value(data=1.2, operator=match.Operator.LESS, value=1.1) == None
+    # assert match.match_value(data=True, operator=match.Operator.LESS, value=True) == None
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, value=datetime.date(2020, 1, 1)) == None
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, value=datetime.time(13, 0)) == None
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, value=datetime.datetime(2020, 1, 2, 13, 0)) == None
 
 def test_match_value_less_than_equal():
-    assert match.match_value(data="foo", operator=match.Operator.LESS, comparator="goo") == "foo"
-    assert match.match_value(data=2, operator=match.Operator.LESS, comparator=3) == 2
-    assert match.match_value(data=1.2, operator=match.Operator.LESS, comparator=1.3) == 1.2
-    # assert match.match_value(data=True, operator=match.Operator.LESS, comparator=True) == True
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, comparator=datetime.date(2020, 1, 3)) == datetime.date(2020, 1, 2)
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, comparator=datetime.time(15, 0)) == datetime.time(14, 0)
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, comparator=datetime.datetime(2020, 1, 2, 15, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
+    assert match.match_value(data="foo", operator=match.Operator.LESS, value="goo") == "foo"
+    assert match.match_value(data=2, operator=match.Operator.LESS, value=3) == 2
+    assert match.match_value(data=1.2, operator=match.Operator.LESS, value=1.3) == 1.2
+    # assert match.match_value(data=True, operator=match.Operator.LESS, value=True) == True
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, value=datetime.date(2020, 1, 3)) == datetime.date(2020, 1, 2)
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, value=datetime.time(15, 0)) == datetime.time(14, 0)
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, value=datetime.datetime(2020, 1, 2, 15, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
 
-    assert match.match_value(data="foo", operator=match.Operator.LESS_EQUAL, comparator="foo") == "foo"
-    assert match.match_value(data=1, operator=match.Operator.LESS_EQUAL, comparator=1) == 1
-    assert match.match_value(data=1.2, operator=match.Operator.LESS_EQUAL, comparator=1.2) == 1.2
-    assert match.match_value(data=True, operator=match.Operator.LESS_EQUAL, comparator=True) == True
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS_EQUAL, comparator=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 2)
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS_EQUAL, comparator=datetime.time(14, 0)) == datetime.time(14, 0)
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS_EQUAL, comparator=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
+    assert match.match_value(data="foo", operator=match.Operator.LESS_EQUAL, value="foo") == "foo"
+    assert match.match_value(data=1, operator=match.Operator.LESS_EQUAL, value=1) == 1
+    assert match.match_value(data=1.2, operator=match.Operator.LESS_EQUAL, value=1.2) == 1.2
+    assert match.match_value(data=True, operator=match.Operator.LESS_EQUAL, value=True) == True
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS_EQUAL, value=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 2)
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS_EQUAL, value=datetime.time(14, 0)) == datetime.time(14, 0)
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS_EQUAL, value=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
 
-    assert match.match_value(data="foo", operator=match.Operator.LESS, comparator="boo") == None
-    assert match.match_value(data=2, operator=match.Operator.LESS, comparator=1) == None
-    assert match.match_value(data=1.2, operator=match.Operator.LESS, comparator=1.1) == None
-    # assert match.match_value(data=True, operator=match.Operator.LESS, comparator=True) == None
-    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, comparator=datetime.date(2020, 1, 1)) == None
-    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, comparator=datetime.time(13, 0)) == None
-    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, comparator=datetime.datetime(2020, 1, 2, 13, 0)) == None
+    assert match.match_value(data="foo", operator=match.Operator.LESS, value="boo") == None
+    assert match.match_value(data=2, operator=match.Operator.LESS, value=1) == None
+    assert match.match_value(data=1.2, operator=match.Operator.LESS, value=1.1) == None
+    # assert match.match_value(data=True, operator=match.Operator.LESS, value=True) == None
+    assert match.match_value(data=datetime.date(2020, 1, 2), operator=match.Operator.LESS, value=datetime.date(2020, 1, 1)) == None
+    assert match.match_value(data=datetime.time(14, 0), operator=match.Operator.LESS, value=datetime.time(13, 0)) == None
+    assert match.match_value(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.LESS, value=datetime.datetime(2020, 1, 2, 13, 0)) == None
 
 def test_match_value_regex():
-    assert match.match_value(data="foo bar", operator=match.Operator.REGEX, comparator="foo") == "foo bar"
+    assert match.match_value(data="foo bar", operator=match.Operator.REGEX, value="foo") == "foo bar"

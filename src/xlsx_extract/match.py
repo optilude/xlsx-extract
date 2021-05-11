@@ -28,7 +28,7 @@ class SheetMatch:
     value : str
     
 @dataclass
-class Match:
+class Comparator:
     """Parameters to find a single cell
     """
 
@@ -36,7 +36,7 @@ class Match:
     value : str = None
 
 @dataclass
-class TargetMatch:
+class Match:
 
     name : str
     sheet : SheetMatch
@@ -51,7 +51,7 @@ class TargetMatch:
     max_col : int = None
 
 @dataclass
-class CellMatch(TargetMatch):
+class CellMatch(Match):
     """Target a single cell
     """
     
@@ -92,7 +92,7 @@ class CellMatch(TargetMatch):
             assert self.reference is None, "%s: Cell value cannot be specified if row and column index are given" % self.name
 
 @dataclass
-class RangeMatch(TargetMatch):
+class RangeMatch(Match):
 
     # Find start of table by cell
     start_cell : CellMatch = None
@@ -147,9 +147,9 @@ class RangeMatch(TargetMatch):
 def match_value(
     data : Union[str, int, float, bool, date, time, datetime],
     operator : Operator,
-    comparator : Union[str, int, float, bool, date, time, datetime]
+    value : Union[str, int, float, bool, date, time, datetime]
 ) -> Union[str, int, float, bool, date, time, datetime]:
-    """Use the `operator` to compare `data` with `comparator`.
+    """Use the `operator` to compare `data` with `value`.
 
     Return value is `None` if not matched, or the matched item.
     For regex matches with match groups, the content of the first
@@ -157,9 +157,9 @@ def match_value(
     """
 
     if operator == Operator.REGEX:
-        assert type(comparator) is str, "Regular expression must be a string"
+        assert type(value) is str, "Regular expression must be a string"
     elif operator not in (Operator.EMPTY, Operator.NOT_EMPTY):
-        assert type(data) is type(comparator), "Cannot compare types %s and %s" % (type(data), type(comparator))
+        assert type(data) is type(value), "Cannot compare types %s and %s" % (type(data), type(value))
     
     if operator == Operator.EMPTY:
         return "" if (
@@ -172,19 +172,19 @@ def match_value(
             (not isinstance(data, str) and data is not None)
         ) else None
     elif operator == Operator.EQUAL:
-        return data if data == comparator else None
+        return data if data == value else None
     elif operator == Operator.NOT_EQUAL:
-        return data if data != comparator else None
+        return data if data != value else None
     elif operator == Operator.GREATER:
-        return data if data > comparator else None
+        return data if data > value else None
     elif operator == Operator.GREATER_EQUAL:
-        return data if data >= comparator else None
+        return data if data >= value else None
     elif operator == Operator.LESS:
-        return data if data < comparator else None
+        return data if data < value else None
     elif operator == Operator.LESS_EQUAL:
-        return data if data <= comparator else None
+        return data if data <= value else None
     elif operator == Operator.REGEX:
-        match = re.search(comparator, data, re.IGNORECASE)
+        match = re.search(value, data, re.IGNORECASE)
         if match is None:
             return None
         groups = match.groups()
