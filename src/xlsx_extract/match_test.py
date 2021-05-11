@@ -25,13 +25,6 @@ def test_construct_cell_match():
         value=match.Comparator(operator=match.Operator.NOT_EMPTY),
     )
 
-    match.CellMatch(
-        name="A",
-        sheet=sheet,
-        row_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
-        col_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
-    )
-
     # No match criteria
     with pytest.raises(AssertionError):
         match.CellMatch(
@@ -46,23 +39,6 @@ def test_construct_cell_match():
             sheet=sheet,
             reference="A3",
             value=match.Comparator(operator=match.Operator.NOT_EMPTY),
-        )
-    
-    # Row without column index and vice-versa
-    with pytest.raises(AssertionError):
-        match.CellMatch(
-            name="A",
-            sheet=sheet,
-            row_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
-            # col_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
-        )
-    
-    with pytest.raises(AssertionError):
-        match.CellMatch(
-            name="A",
-            sheet=sheet,
-            # row_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
-            col_index_value=match.Comparator(operator=match.Operator.NOT_EMPTY),
         )
     
 def test_construct_range_match():

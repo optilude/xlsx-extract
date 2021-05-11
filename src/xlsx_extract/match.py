@@ -41,7 +41,7 @@ class Match:
     name : str
     sheet : SheetMatch
 
-    # Search by cell reference (name or coordinate)
+    # Search by cell/range reference (name or coordinate)
     reference : str = None
 
     # Define a search area
@@ -56,40 +56,22 @@ class CellMatch(Match):
     """
     
     # Search by cell contents
-    value : Match = None
+    value : Comparator = None
     
-    # Find a cell by contents and use its row, and a separate cell and use its column
-    row_index_value : Match = None
-    col_index_value : Match = None
-
     # Find value in offset from the matched cell (can be positive or negative)
     row_offset : int = 0
     col_offset : int = 0
 
     def __post_init__(self):
 
-        assert self.reference is not None or self.value is not None or \
-                (self.row_index_value is not None and self.col_index_value is not None), \
-                "%s: Either cell reference, cell value or row- and column index value must be given to identify a cell" % self.name
+        assert self.reference is not None or self.value is not None, \
+                "%s: Either cell reference or cell value must be given to identify a cell" % self.name
 
         if self.reference is not None:
             assert self.value is None, "%s: Cell value cannot be specified if cell reference is given" % self.name
-            assert self.row_index_value is None, "%s: Row index value cannot be specified if cell reference is given" % self.name
-            assert self.col_index_value is None, "%s: Column index value cannot be specified if cell reference is given" % self.name
         
         if self.value is not None:
             assert self.reference is None, "%s: Cell value cannot be specified if cell value is given" % self.name
-            assert self.row_index_value is None, "%s: Row index value cannot be specified if cell value is given" % self.name
-            assert self.col_index_value is None, "%s: Column index value cannot be specified if cell value is given" % self.name
-
-        if self.row_index_value is not None:
-            assert self.col_index_value is not None, "%s: If row index value is specified, column index value must also be spcified" % self.name
-        if self.col_index_value is not None:
-            assert self.row_index_value is not None, "%s: If column index value is specified, row index value must also be spcified" % self.name
-        
-        if self.row_index_value is not None:
-            assert self.value is None, "%s: Cell value cannot be specified if row and column index are given" % self.name
-            assert self.reference is None, "%s: Cell value cannot be specified if row and column index are given" % self.name
 
 @dataclass
 class RangeMatch(Match):
