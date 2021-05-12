@@ -11,8 +11,8 @@ class Target:
     - Target reference is a single cell, source is a single cell: Copy value from source to the target
     - Target reference is a single cell, source is a table: Use `source_row` and `source_col` to find
       a single cell and copy its value to the target.
-    - Target reference is a range/table, source is a single cell: Use `target_row` and `target_col` to
-      find a single target cell, into which the source is copied.
+    - Target reference is a range/table, source is a single cell: Invalid. target a single cell
+      instead.
     - Target reference is a range/table, source is a range/table: There are three scenarios.
     
       1. Replace the whole target table with the source: Set `reference` and `source` only.
@@ -53,7 +53,7 @@ class Target:
     target_row : CellMatch = None
     target_col : CellMatch = None
     
-    # How to insert range: align to target table row/ column labels or copy directly
+    # How to insert range: align to target table row/column labels or copy directly
     align : bool = False
 
     # Whether to expand table or truncate values when copying (if align == False)
