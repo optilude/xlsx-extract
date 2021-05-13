@@ -88,6 +88,14 @@ class Match:
     max_row : int = None
     max_col : int = None
 
+    def get_sheet(self, workbook):
+        """
+        """
+        pass
+
+    def _iter_rows(self, worksheet):
+        pass
+
 @dataclass
 class CellMatch(Match):
     """Target a single cell
