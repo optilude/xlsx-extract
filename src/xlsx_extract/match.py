@@ -1,9 +1,15 @@
 import re
 
 from enum import Enum
-from typing import Union
+from typing import Any, Union, Tuple, Generator
 from datetime import datetime, date, time
 from dataclasses import dataclass
+
+from openpyxl import Workbook
+import openpyxl
+from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.cell.cell import Cell
+from openpyxl.utils.cell import quote_sheetname, range_to_tuple
 
 class Operator(Enum):
 
@@ -77,7 +83,9 @@ class Comparator:
 class Match:
 
     name : str
-    sheet : Comparator
+
+    # What sheet are we on? Optional if `reference` is set
+    sheet : Comparator = None
 
     # Search by cell/range reference (name or coordinate)
     reference : str = None
@@ -88,13 +96,76 @@ class Match:
     max_row : int = None
     max_col : int = None
 
-    def get_sheet(self, workbook):
+    def match(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Union[Cell,Tuple[Cell]], Any]:
+        """Match current parameters in worksheet and return a tuple of
+        `(matched cell(s), matched value)`.
         """
-        """
-        pass
+        # Subclasses will implement
+        raise NotImplementedError
 
-    def _iter_rows(self, worksheet):
-        pass
+    def get_sheet(self, workbook : Workbook) -> Tuple[Worksheet, str]:
+        """Return the worksheet matching `self.sheet`, returning
+        a tuple of the worksheet object and the matched title
+        """
+        for ws in workbook.worksheets:
+            match = self.sheet.match(ws.title)
+            if match is not None:
+                return (ws, match)
+        return (None, None)
+
+    def find_by_reference(self, workbook : Workbook, worksheet : Worksheet = None) -> Union[Cell, Tuple[Cell]]:
+        """Find the cell or range matching `self.reference`.
+        """
+
+        if self.reference is None:
+            return None
+        
+        ref = self.reference
+        found_locally = False
+
+        # First try a locally defined name
+        if worksheet is not None:
+            sheet_id = workbook.get_index(worksheet)
+            if self.reference in workbook.defined_names.localnames(sheet_id):
+                defined_name = workbook.defined_names.get(self.reference, sheet_id)
+                if defined_name is not None:
+                    ref = defined_name.attr_text
+                    found_locally = True
+        
+        # Then try a globally defined name
+        if not found_locally and self.reference in workbook.defined_names:
+            ref = workbook.defined_names[self.reference].attr_text
+
+        if ref is None or ref == "":
+            return None
+
+        # Add sheet name to reference if needed
+        if '!' not in ref:
+            assert worksheet is not None, "Sheet must be given if reference does not contain a sheet name"
+            ref = "%s!%s" % (quote_sheetname(worksheet.title), ref)
+
+        # Get range numerically
+        sheet_name, (r1, c1, r2, c2) = range_to_tuple(ref)
+        
+        sheet = workbook[sheet_name]
+
+        # Single cell
+        if r1 == r2 and c1 == c2:
+            return sheet.cell(r1, c1)
+        # Range
+        else:
+            return tuple(sheet.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
+
+    def _iter_rows(self, worksheet : Worksheet) -> Generator[Tuple[Cell], None, None]:
+        """Iterate over rows (list of cells) in the worksheet within the 
+        min/max row/col boundaries.
+        """
+        return worksheet.iter_rows(
+            min_row=self.min_row,
+            max_row=self.max_row,
+            min_col=self.min_col,
+            max_col=self.max_col
+        )
 
 @dataclass
 class CellMatch(Match):
@@ -117,7 +188,45 @@ class CellMatch(Match):
             assert self.value is None, "%s: Cell value cannot be specified if cell reference is given" % self.name
         
         if self.value is not None:
+            assert self.sheet is not None, "%s: Sheet is required if matching by value" % self.name
             assert self.reference is None, "%s: Cell value cannot be specified if cell value is given" % self.name
+
+    def match(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Cell, Any]:
+        """Match a single cell
+        """
+
+        cell = None
+        match = None
+
+        if self.reference is not None:
+            cell = self.find_by_reference(workbook, worksheet)
+        elif self.value is not None:
+            cell, match = self.find_by_value(worksheet)
+        
+        if cell is not None:
+            cell = self.apply_offset(cell)
+        
+        return (cell, match)
+
+    def find_by_value(self, worksheet : Worksheet) -> Tuple[Cell, Any]:
+        """Search the worksheet for a cell by value comparator, returning
+        a tuple of `(cell, match)` or `(None, None)`.
+        """
+        if self.value is None or worksheet is None:
+            return (None, None)
+
+        for row in self._iter_rows(worksheet):
+            for cell in row:
+                match_value = self.value.match(cell.value)
+                if match_value is not None:
+                    return (cell, match_value)
+    
+    def apply_offset(self, cell : Cell) -> Cell:
+        """Return a cell at the current row/col offset from the input cell
+        """
+        row = cell.row + self.row_offset
+        col = cell.col_idx + self.col_offset
+        return cell.parent.cell(row, col)
 
 @dataclass
 class RangeMatch(Match):
@@ -171,3 +280,23 @@ class RangeMatch(Match):
             if self.contiguous:
                 assert self.rows is None and self.cols is None, "%s: Fixed row and column counts cannot be specified if contiguousness is specified" % self.name
                 assert self.end_cell is None, "%s: An end cell cannot be specified if contiguousness is specified" % self.name
+
+    def match(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell], Any]:
+        """Match a range cell
+        """
+        # TODO
+    
+    def find_by_end_cell(self, worksheet : Worksheet) -> Tuple[Cell]:
+        """Find range by `self.start_cell` and `self.end_cell`.
+        """
+        # TODO
+    
+    def find_by_dimensions(self, worksheet : Worksheet) -> Tuple[Cell]:
+        """Find range by `self.start_cell`, `self.rows` and `self.cols`.
+        """
+        # TODO
+    
+    def find_by_contiguous_region(self, worksheet : Worksheet) -> Tuple[Cell]:
+        """Find range contiguously from `self.start_cell`.
+        """
+        # TODO
