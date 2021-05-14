@@ -46,7 +46,8 @@ class Comparator:
         """
 
         if self.operator not in (Operator.EMPTY, Operator.NOT_EMPTY):
-            assert type(data) is type(self.value), "Cannot compare types %s and %s" % (type(data), type(self.value))
+            if type(data) is not type(self.value):
+                return None
         
         if self.operator == Operator.EMPTY:
             return "" if (
@@ -134,6 +135,9 @@ class Match:
         # Then try a globally defined name
         if not found_locally and self.reference in workbook.defined_names:
             ref = workbook.defined_names[self.reference].attr_text
+        # Then try a named table (note: readonly sheets don't have a tables attribute)
+        elif worksheet is not None and hasattr(worksheet, 'tables') and self.reference in worksheet.tables:
+            ref = worksheet.tables[self.reference].ref
 
         if ref is None or ref == "":
             return None
@@ -144,7 +148,7 @@ class Match:
             ref = "%s!%s" % (quote_sheetname(worksheet.title), ref)
 
         # Get range numerically
-        sheet_name, (r1, c1, r2, c2) = range_to_tuple(ref)
+        sheet_name, (c1, r1, c2, r2) = range_to_tuple(ref)
         
         sheet = workbook[sheet_name]
 
@@ -194,18 +198,23 @@ class CellMatch(Match):
         """Match a single cell
         """
 
+        if worksheet is None and self.sheet is not None:
+            worksheet, _ = self.get_sheet(workbook)
+
         cell = None
         match = None
 
         if self.reference is not None:
             cell = self.find_by_reference(workbook, worksheet)
+            if isinstance(cell, tuple): # got a range
+                cell = None
         elif self.value is not None:
             cell, match = self.find_by_value(worksheet)
         
         if cell is not None:
             cell = self.apply_offset(cell)
         
-        return (cell, match)
+        return (cell, match,)
 
     def find_by_value(self, worksheet : Worksheet) -> Tuple[Cell, Any]:
         """Search the worksheet for a cell by value comparator, returning
@@ -219,6 +228,8 @@ class CellMatch(Match):
                 match_value = self.value.match(cell.value)
                 if match_value is not None:
                     return (cell, match_value)
+        
+        return (None, None)
     
     def apply_offset(self, cell : Cell) -> Cell:
         """Return a cell at the current row/col offset from the input cell
@@ -283,8 +294,28 @@ class RangeMatch(Match):
     def match(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell], Any]:
         """Match a range cell
         """
-        # TODO
-    
+
+        if worksheet is None and self.sheet is not None:
+            worksheet, _ = self.get_sheet(workbook)
+
+        cells = None
+        match = None
+
+        if self.reference is not None:
+            cells = self.find_by_reference(workbook, worksheet)
+            if cells is not None and not isinstance(cells, tuple): # single cell -> table
+                cells = (cells,)
+        elif self.start_cell is not None:
+            if self.end_cell is not None:
+                cells, match = self.find_by_end_cell(workbook, worksheet)
+            elif self.rows is not None and self.cols is not None:
+                cells, match = self.find_by_dimensions(workbook, worksheet)
+            elif self.contiguous:
+                cells, match = self.find_by_contiguous_region(workbook, worksheet)
+        
+        return (cells, match)
+
+
     def find_by_end_cell(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell], Any]:
         """Find range by `self.start_cell` and `self.end_cell`.
         """
