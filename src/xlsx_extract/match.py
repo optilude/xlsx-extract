@@ -5,7 +5,7 @@ from typing import Any, Union, Tuple, Generator
 from datetime import datetime, date, time
 from dataclasses import dataclass
 
-from openpyxl import Workbook
+from openpyxl import Workbook, workbook
 import openpyxl
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell.cell import Cell
@@ -116,7 +116,6 @@ class Match:
     def find_by_reference(self, workbook : Workbook, worksheet : Worksheet = None) -> Union[Cell, Tuple[Cell]]:
         """Find the cell or range matching `self.reference`.
         """
-
         if self.reference is None:
             return None
         
@@ -286,17 +285,88 @@ class RangeMatch(Match):
         """
         # TODO
     
-    def find_by_end_cell(self, worksheet : Worksheet) -> Tuple[Cell]:
+    def find_by_end_cell(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell], Any]:
         """Find range by `self.start_cell` and `self.end_cell`.
         """
-        # TODO
+        if self.start_cell is None or self.end_cell is None:
+            return (None, None,)
+
+        start_cell, start_cell_match = self.start_cell.match(workbook, worksheet)
+        end_cell, _ = self.end_cell.match(workbook, worksheet)
+        
+        if start_cell is None or end_cell is None:
+            return (None, None,)
+        
+        # If the cells came from sheets, we can't compare them
+        if start_cell.parent.title != end_cell.parent.title:
+            return (None, None,)
+        
+        return (
+            tuple(start_cell.parent.iter_rows(
+                min_row=start_cell.row,
+                min_col=start_cell.col_idx,
+                max_row=end_cell.row,
+                max_col=end_cell.col_idx
+            )),
+            start_cell_match,
+        )
     
-    def find_by_dimensions(self, worksheet : Worksheet) -> Tuple[Cell]:
+    def find_by_dimensions(self, workbook : Workbook, worksheet : Worksheet) -> Tuple[Tuple[Cell], Any]:
         """Find range by `self.start_cell`, `self.rows` and `self.cols`.
         """
-        # TODO
+        if self.start_cell is None or self.rows is None or self.cols is None:
+            return (None, None)
+
+        start_cell, start_cell_match = self.start_cell.match(workbook, worksheet)
+
+        if start_cell is None:
+            return (None, None,)
+
+        return (
+            tuple(start_cell.parent.iter_rows(
+                min_row=start_cell.row,
+                min_col=start_cell.col_idx,
+                max_row=start_cell.row + self.rows,
+                max_col=start_cell.col_idx + self.cols
+            )),
+            start_cell_match,
+        )
     
-    def find_by_contiguous_region(self, worksheet : Worksheet) -> Tuple[Cell]:
+    def find_by_contiguous_region(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell], Any]:
         """Find range contiguously from `self.start_cell`.
         """
-        # TODO
+        if self.start_cell is None or not self.contiguous:
+            return (None, None,)
+
+        start_cell, start_cell_match = self.start_cell.match(workbook, worksheet)
+
+        if start_cell is None:
+            return (None, None,)
+
+        sheet = start_cell.parent
+        rows = 0
+        cols = 0
+
+        # find first blank column along first row
+        # we use `iter_rows()` because `iter_cols()` isn't available in readonly mode!
+        for r in sheet.iter_rows(min_row=start_cell.row, max_row=start_cell.row, min_col=start_cell.col_idx, values_only=True):
+            for c in r:
+                if c is None or c == "":
+                    break
+                cols += 1
+        
+        # find first blank row along first column
+        for r in sheet.iter_rows(min_row=start_cell.row, min_col=start_cell.col_idx, max_col=start_cell.col_idx, values_only=True):
+            if len(r) == 0 or r[0] is None or r[0] == "":
+                break
+            rows += 1
+
+        return (
+            tuple(start_cell.parent.iter_rows(
+                min_row=start_cell.row,
+                min_col=start_cell.col_idx,
+                max_row=start_cell.row + rows,
+                max_col=start_cell.col_idx + cols
+            )),
+            start_cell_match
+        )
