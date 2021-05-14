@@ -1,7 +1,13 @@
-import pytest
+import os.path
 import datetime
+import pytest
+import openpyxl
 
 from . import match
+
+def get_test_workbook():
+    filename = os.path.join(os.path.dirname(__file__), 'test_data', 'source.xlsx')
+    return openpyxl.load_workbook(filename, read_only=True)
 
 def test_construct_cell_match():
 
@@ -287,3 +293,36 @@ def test_match_value_less_than_equal():
 
 def test_match_value_regex():
     assert match_value(data="foo bar", operator=match.Operator.REGEX, value="foo") == "foo bar"
+
+def test_cell_match_sheet_match_notfound():
+    wb = get_test_workbook()
+    
+    m = match.CellMatch(name="Test", sheet=match.Comparator(match.Operator.EQUAL, "foobar"), reference="A1")
+
+    ws, s = m.get_sheet(wb)
+
+    assert s is None
+    assert ws is None
+
+def test_cell_match_sheet_match_equals():
+    wb = get_test_workbook()
+    
+    m = match.CellMatch(name="Test", sheet=match.Comparator(match.Operator.EQUAL, "Report 1"), reference="A1")
+
+    ws, s = m.get_sheet(wb)
+
+    assert s == "Report 1"
+    assert ws.title == "Report 1"
+    assert ws.parent is wb
+
+def test_cell_match_sheet_match_regex():
+
+    wb = get_test_workbook()
+
+    m = match.CellMatch(name="Test", sheet=match.Comparator(match.Operator.REGEX, "Report (.+)"), reference="A1")
+
+    ws, s = m.get_sheet(wb)
+
+    assert s == "1"
+    assert ws.title == "Report 1"
+    assert ws.parent is wb
