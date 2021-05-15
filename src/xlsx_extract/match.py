@@ -45,10 +45,12 @@ class Comparator:
         match group is returned (as a string).
         """
 
-        if self.operator not in (Operator.EMPTY, Operator.NOT_EMPTY):
-            if type(data) is not type(self.value):
-                return None
+        value = self.value
         
+        # note: datetime derives from date
+        if isinstance(value, date) and not isinstance(value, datetime) and isinstance(data, datetime):
+            value = datetime.fromordinal(value.toordinal())
+
         if self.operator == Operator.EMPTY:
             return "" if (
                 (isinstance(data, str) and len(data) == 0) or
@@ -60,21 +62,43 @@ class Comparator:
                 (not isinstance(data, str) and data is not None)
             ) else None
         elif self.operator == Operator.EQUAL:
-            return data if data == self.value else None
+            try:
+                return data if data == value else None
+            except TypeError:
+                return None
         elif self.operator == Operator.NOT_EQUAL:
-            return data if data != self.value else None
+            try:
+                return data if data != value else None
+            except TypeError:
+                return None
         elif self.operator == Operator.GREATER:
-            return data if data > self.value else None
+            try:
+                return data if data > value else None
+            except TypeError:
+                return None
         elif self.operator == Operator.GREATER_EQUAL:
-            return data if data >= self.value else None
+            try:
+                return data if data >= value else None
+            except TypeError:
+                return None
         elif self.operator == Operator.LESS:
-            return data if data < self.value else None
+            try:
+                return data if data < value else None
+            except TypeError:
+                return None
         elif self.operator == Operator.LESS_EQUAL:
-            return data if data <= self.value else None
+            try:
+                return data if data <= value else None
+            except TypeError:
+                return None
         elif self.operator == Operator.REGEX:
-            match = re.search(self.value, data, re.IGNORECASE)
+            if not isinstance(data, (str, bytes)):
+                return None
+            
+            match = re.search(value, data, re.IGNORECASE)
             if match is None:
                 return None
+            
             groups = match.groups()
             return groups[0] if len(groups) > 0 else data
         

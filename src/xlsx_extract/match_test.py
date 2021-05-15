@@ -164,6 +164,7 @@ class TestMatchValue:
         assert self.mv(data=1.2, operator=match.Operator.EQUAL, value=1.2) == 1.2
         assert self.mv(data=True, operator=match.Operator.EQUAL, value=True) == True
         assert self.mv(data=datetime.date(2020, 1, 2), operator=match.Operator.EQUAL, value=datetime.date(2020, 1, 2)) == datetime.date(2020, 1, 2)
+        assert self.mv(data=datetime.datetime(2020, 1, 2), operator=match.Operator.EQUAL, value=datetime.date(2020, 1, 2)) == datetime.datetime(2020, 1, 2)
         assert self.mv(data=datetime.time(14, 0), operator=match.Operator.EQUAL, value=datetime.time(14, 0)) == datetime.time(14, 0)
         assert self.mv(data=datetime.datetime(2020, 1, 2, 14, 0), operator=match.Operator.EQUAL, value=datetime.datetime(2020, 1, 2, 14, 0)) == datetime.datetime(2020, 1, 2, 14, 0)
 
@@ -340,7 +341,11 @@ class TestCellMatch:
 
     def test_find_by_reference_cell_with_different_sheet(self):
         wb = get_test_workbook()
-        m = match.CellMatch(name="Test", sheet=match.Comparator(match.Operator.EQUAL, "Report 2"), reference="'Report 1'!B3")
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 2"),
+            reference="'Report 1'!B3"
+        )
         
         v, s = m.match(wb)
 
@@ -349,7 +354,11 @@ class TestCellMatch:
 
     def test_find_by_reference_cell_with_sheet(self):
         wb = get_test_workbook()
-        m = match.CellMatch(name="Test", sheet=match.Comparator(match.Operator.EQUAL, "Report 1"), reference="B3")
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            reference="B3"
+        )
         
         v, s = m.match(wb)
 
@@ -384,38 +393,317 @@ class TestCellMatch:
 
     def test_find_by_reference_table(self):
         wb = get_test_workbook()
-        m = match.CellMatch(name="Test", sheet=match.Comparator(match.Operator.EQUAL, "Report 2"), reference="RangleTable")
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 2"),
+            reference="RangleTable"
+        )
         
         v, s = m.match(wb)
 
         assert v is None
         assert s is None
 
-    def test_find_by_value(self):
+    def test_find_by_value_string(self):
         wb = get_test_workbook()
 
-        m = match.CellMatch(name="Test", sheet=match.Comparator(match.Operator.EQUAL, "Report 1"), value=match.Comparator(match.Operator.EQUAL, "Date"))
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date")
+        )
         v, s = m.match(wb)
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "Date"
 
-        m = match.CellMatch(name="Test", sheet=match.Comparator(match.Operator.EQUAL, "Report 1"), value=match.Comparator(match.Operator.EQUAL, "notfound"))
+        m = match.CellMatch(name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "notfound")
+        )
         v, s = m.match(wb)
         assert v is None
         assert s is None
 
     def test_find_by_value_regex(self):
-        pass
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.REGEX, "^Da(.+)")
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'B3'
+        assert v.value == "Date"
+        assert s == "te"
+
+        m = match.CellMatch(name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.REGEX, "^Da$")
+        )
+        v, s = m.match(wb)
+        assert v is None
+        assert s is None
 
     def test_find_by_value_empty(self):
-        pass
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EMPTY)
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'A1'
+        assert v.value is None
+        assert s == ""
+
+    def test_find_by_value_empty_bounded(self):
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EMPTY),
+            min_row=3,
+            min_col=2
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'D3'
+        assert v.value is None
+        assert s == ""
+
+    def test_find_by_value_not_empty(self):
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.NOT_EMPTY)
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'B3'
+        assert v.value == "Date"
+        assert s == "Date"
+
+    def test_find_by_value_not_empty_bounded(self):
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.NOT_EMPTY),
+            min_row=4,
+            min_col=2
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C5'
+        assert v.value == "Jan"
+        assert s == "Jan"
 
     def test_find_by_value_numeric(self):
-        pass
+        wb = get_test_workbook()
 
-    def test_find_by_value_bounded(self):
-        pass
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.GREATER, 6)
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'E6'
+        assert v.value == 11
+        assert s == 11
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.GREATER_EQUAL, 6)
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'D6'
+        assert v.value == 6
+        assert s == 6
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, 4.6)
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'F6'
+        assert v.value == 4.6
+        assert s == 4.6
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.LESS, 1.5)
+        )
+        v, s = m.match(wb)
+        assert v is None
+        assert s == None
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.LESS, 2)
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C6'
+        assert v.value == 1.5
+        assert s == 1.5
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.LESS_EQUAL, 1.5)
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C6'
+        assert v.value == 1.5
+        assert s == 1.5
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.NOT_EQUAL, 1.5),
+            min_row=6,
+            min_col=3,
+            max_row=9,
+            max_col=6,
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'D6'
+        assert v.value == 6
+        assert s == 6
+
+    def test_find_by_value_datetime(self):
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, datetime.datetime(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C3'
+        assert v.value == datetime.datetime(2021, 5, 1)
+        assert s == datetime.datetime(2021, 5, 1)
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.GREATER, datetime.datetime(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v is None
+        assert s is None
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.GREATER_EQUAL, datetime.datetime(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C3'
+        assert v.value == datetime.datetime(2021, 5, 1)
+        assert s == datetime.datetime(2021, 5, 1)
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.LESS, datetime.datetime(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v is None
+        assert s is None
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.LESS_EQUAL, datetime.datetime(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C3'
+        assert v.value == datetime.datetime(2021, 5, 1)
+        assert s == datetime.datetime(2021, 5, 1)
     
+    def test_find_by_value_datet(self):
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, datetime.date(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C3'
+        assert v.value == datetime.datetime(2021, 5, 1)
+        assert s == datetime.datetime(2021, 5, 1)
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.GREATER, datetime.date(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v is None
+        assert s is None
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.GREATER_EQUAL, datetime.date(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C3'
+        assert v.value == datetime.datetime(2021, 5, 1)
+        assert s == datetime.datetime(2021, 5, 1)
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.LESS, datetime.date(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v is None
+        assert s is None
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.LESS_EQUAL, datetime.date(2021, 5, 1))
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C3'
+        assert v.value == datetime.datetime(2021, 5, 1)
+        assert s == datetime.datetime(2021, 5, 1)
+
     def test_offset(self):
-        pass
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+            col_offset=1,
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C3'
+        assert v.value == datetime.datetime(2021, 5, 1)
+        assert s == "Date"
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+            col_offset=1,
+            row_offset=2
+        )
+        v, s = m.match(wb)
+        assert v.coordinate == 'C5'
+        assert v.value == "Jan"
+        assert s == "Date"
+
+        
