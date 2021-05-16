@@ -706,4 +706,112 @@ class TestCellMatch:
         assert v.value == "Jan"
         assert s == "Date"
 
+class TestRangeMatch:
+
+    def test_find_by_reference_cell(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(name="Test", reference="'Report 1'!B3")
         
+        v, s = m.match(wb)
+
+        assert len(v) == 1
+        assert len(v[0]) == 1
+        assert v[0][0].value == "Date"
+        assert s is None
+
+    def test_find_by_reference_cell_with_different_sheet(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 2"),
+            reference="'Report 1'!B3"
+        )
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 1
+        assert len(v[0]) == 1
+        assert v[0][0].value == "Date"
+        assert s is None
+
+    def test_find_by_reference_cell_with_sheet(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            reference="B3"
+        )
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 1
+        assert len(v[0]) == 1
+        assert v[0][0].value == "Date"
+        assert s is None
+
+    def test_find_by_reference_range(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(name="Test", reference="'Report 1'!A3:B3")
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 1
+        assert len(v[0]) == 2
+        assert v[0][0].value is None
+        assert v[0][1].value == "Date"
+        assert s is None
+    
+    def test_find_by_reference_range_2d(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(name="Test", reference="'Report 1'!$C$5:$D$6")
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 2
+        assert len(v[0]) == 2
+        assert v[0][0].value == "Jan"
+        assert v[0][1].value == "Feb"
+        assert v[1][0].value == 1.5
+        assert v[1][1].value == 6
+        assert s is None
+
+    def test_find_by_reference_named_cell(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(name="Test", reference="DATE_CELL")
+        v, s = m.match(wb)
+
+        assert len(v) == 1
+        assert len(v[0]) == 1
+        assert v[0][0].value == datetime.datetime(2021, 5, 1, 0, 0)
+        assert s is None
+    
+    def test_find_by_reference_named_range(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(name="Test", reference="PROFIT_RANGE")
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 5
+        assert [c.value for c in v[0]] == [None, 'Profit', None, 'Loss', None]
+        assert [c.value for c in v[1]] == [None, '£', 'Plan', '£', 'Plan']
+        assert [c.value for c in v[2]] == ['Alpha', 100, 100, 50, 20]
+        assert [c.value for c in v[3]] == ['Beta', 200, 150, 50, 20]
+        assert [c.value for c in v[4]] == ['Delta', 300, 350, 50, 20]
+        assert s is None
+
+    def test_find_by_reference_table(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 2"),
+            reference="RangleTable"
+        )
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 4
+        assert [c.value for c in v[0]] == ['Name', 'Date', 'Range', 'Price']
+        assert [c.value for c in v[1]] == ['Bill', datetime.datetime(2021, 1, 1), 9, 15]
+        assert [c.value for c in v[2]] == ['Bob', datetime.datetime(2021, 3, 2), 14, 18]
+        assert [c.value for c in v[3]] == ['Joan', datetime.datetime(2021, 6, 5), 13, 99]
+        assert s is None

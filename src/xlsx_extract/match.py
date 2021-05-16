@@ -328,7 +328,7 @@ class RangeMatch(Match):
         if self.reference is not None:
             cells = self.find_by_reference(workbook, worksheet)
             if cells is not None and not isinstance(cells, tuple): # single cell -> table
-                cells = (cells,)
+                cells = ((cells,),)
         elif self.start_cell is not None:
             if self.end_cell is not None:
                 cells, match = self.find_by_end_cell(workbook, worksheet)
