@@ -232,8 +232,8 @@ class CellMatch(Match):
         elif self.value is not None:
             cell, match = self.find_by_value(worksheet)
         
-        if cell is not None:
-            cell = self.apply_offset(cell)
+        if cell is not None and (self.row_offset != 0 or self.col_offset != 0):
+            cell = cell.offset(self.row_offset, self.col_offset)
         
         return (cell, match,)
 
@@ -251,13 +251,6 @@ class CellMatch(Match):
                     return (cell, match_value)
         
         return (None, None)
-    
-    def apply_offset(self, cell : Cell) -> Cell:
-        """Return a cell at the current row/col offset from the input cell
-        """
-        row = cell.row + self.row_offset
-        col = cell.col_idx + self.col_offset
-        return cell.parent.cell(row, col)
     
     def _iter_rows(self, worksheet : Worksheet) -> Generator[Tuple[Cell], None, None]:
         """Iterate over rows (list of cells) in the worksheet within the 
