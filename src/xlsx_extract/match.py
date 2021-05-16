@@ -115,12 +115,6 @@ class Match:
     # Search by cell/range reference (name or coordinate)
     reference : str = None
 
-    # Define a search area
-    min_row : int = None
-    min_col : int = None
-    max_row : int = None
-    max_col : int = None
-
     def match(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Union[Cell,Tuple[Cell]], Any]:
         """Match current parameters in worksheet and return a tuple of
         `(matched cell(s), matched value)`.
@@ -174,6 +168,10 @@ class Match:
 
         # Get range numerically
         sheet_name, (c1, r1, c2, r2) = range_to_tuple(ref)
+
+        # not found
+        if None in (r1, c1, r2, c2,):
+            return None
         
         sheet = workbook[sheet_name]
 
@@ -184,16 +182,7 @@ class Match:
         else:
             return tuple(sheet.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
 
-    def _iter_rows(self, worksheet : Worksheet) -> Generator[Tuple[Cell], None, None]:
-        """Iterate over rows (list of cells) in the worksheet within the 
-        min/max row/col boundaries.
-        """
-        return worksheet.iter_rows(
-            min_row=self.min_row,
-            max_row=self.max_row,
-            min_col=self.min_col,
-            max_col=self.max_col
-        )
+    
 
 @dataclass
 class CellMatch(Match):
@@ -207,6 +196,12 @@ class CellMatch(Match):
     row_offset : int = 0
     col_offset : int = 0
 
+    # Define a search area
+    min_row : int = None
+    min_col : int = None
+    max_row : int = None
+    max_col : int = None
+
     def __post_init__(self):
 
         assert self.reference is not None or self.value is not None, \
@@ -216,14 +211,16 @@ class CellMatch(Match):
             assert self.value is None, "%s: Cell value cannot be specified if cell reference is given" % self.name
         
         if self.value is not None:
-            assert self.sheet is not None, "%s: Sheet is required if matching by value" % self.name
+            # can be set in post-init by range match
+            # assert self.sheet is not None, "%s: Sheet is required if matching by value" % self.name
             assert self.reference is None, "%s: Cell value cannot be specified if cell value is given" % self.name
 
-    def match(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Cell, Any]:
+    def match(self, workbook : Workbook) -> Tuple[Cell, Any]:
         """Match a single cell
         """
 
-        if worksheet is None and self.sheet is not None:
+        worksheet = None
+        if self.sheet is not None:
             worksheet, _ = self.get_sheet(workbook)
 
         cell = None
@@ -262,6 +259,17 @@ class CellMatch(Match):
         row = cell.row + self.row_offset
         col = cell.col_idx + self.col_offset
         return cell.parent.cell(row, col)
+    
+    def _iter_rows(self, worksheet : Worksheet) -> Generator[Tuple[Cell], None, None]:
+        """Iterate over rows (list of cells) in the worksheet within the 
+        min/max row/col boundaries.
+        """
+        return worksheet.iter_rows(
+            min_row=self.min_row,
+            max_row=self.max_row,
+            min_col=self.min_col,
+            max_col=self.max_col
+        )
 
 @dataclass
 class RangeMatch(Match):
@@ -276,10 +284,6 @@ class RangeMatch(Match):
     rows : int = None
     cols : int = None
 
-    # Range extends until blank header row and blank first column (or later)
-    # As a special case, allows top-left cell to be blank if the rest of the header is defined
-    contiguous : bool = False
-
     def __post_init__(self):
 
         assert self.reference is not None or self.start_cell is not None, \
@@ -290,19 +294,19 @@ class RangeMatch(Match):
             assert self.end_cell is None, "%s: End cell cannot be specified if a reference is used" % self.name
             assert self.rows is None, "%s: Row count cannot be specified if a reference is used" % self.name
             assert self.cols is None, "%s: Column count cannot be specified if a reference is used" % self.name
-            assert self.contiguous == False, "%s: Contiguousness cannot be specified if a reference is used" % self.name
         
         if self.start_cell is not None:
             assert self.reference is None, "%s: A cell reference cannot be specified if a start cell is given" % self.name
             
-            # Default to contiguous mode if neither end cell or rows/cols are specified
-            if self.end_cell is None and self.rows is None and self.cols is None:
-                self.contiguous = True
+            if self.sheet is not None:
+                self.start_cell.sheet = self.sheet
 
             if self.end_cell is not None:
                 assert self.rows is None and self.cols is None, "%s: Fixed row and column counts cannot be specified if an end cell is given" % self.name
-                assert self.contiguous == False, "%s: Contiguousness cannot be specified if an end cell is given" % self.name
-            
+
+                if self.sheet is not None:
+                    self.end_cell.sheet = self.sheet
+
             if self.rows is not None:
                 assert self.cols is not None, "%s: If a fixed row count is given, a fixed column count must also be specified" % self.name
             if self.cols is not None:
@@ -310,17 +314,13 @@ class RangeMatch(Match):
 
             if self.rows is not None and self.cols is not None:
                 assert self.end_cell is None, "%s: An end cell cannot be specified if fixed row and column counts are given" % self.name
-                assert self.contiguous == False, "%s: Contiguousness cannot be specified if fixed row and column counts are given" % self.name
 
-            if self.contiguous:
-                assert self.rows is None and self.cols is None, "%s: Fixed row and column counts cannot be specified if contiguousness is specified" % self.name
-                assert self.end_cell is None, "%s: An end cell cannot be specified if contiguousness is specified" % self.name
-
-    def match(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell], Any]:
-        """Match a range cell
+    def match(self, workbook : Workbook) -> Tuple[Tuple[Cell], Any]:
+        """Match a range of cells
         """
 
-        if worksheet is None and self.sheet is not None:
+        worksheet = None
+        if self.sheet is not None:
             worksheet, _ = self.get_sheet(workbook)
 
         cells = None
@@ -330,23 +330,23 @@ class RangeMatch(Match):
             cells = self.find_by_reference(workbook, worksheet)
         elif self.start_cell is not None:
             if self.end_cell is not None:
-                cells, match = self.find_by_end_cell(workbook, worksheet)
+                cells, match = self.find_by_end_cell(workbook)
             elif self.rows is not None and self.cols is not None:
-                cells, match = self.find_by_dimensions(workbook, worksheet)
-            elif self.contiguous:
-                cells, match = self.find_by_contiguous_region(workbook, worksheet)
+                cells, match = self.find_by_dimensions(workbook)
+            else:
+                cells, match = self.find_by_contiguous_region(workbook)
         
         return (cells, match)
 
 
-    def find_by_end_cell(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell], Any]:
+    def find_by_end_cell(self, workbook : Workbook) -> Tuple[Tuple[Cell], Any]:
         """Find range by `self.start_cell` and `self.end_cell`.
         """
         if self.start_cell is None or self.end_cell is None:
             return (None, None,)
 
-        start_cell, start_cell_match = self.start_cell.match(workbook, worksheet)
-        end_cell, _ = self.end_cell.match(workbook, worksheet)
+        start_cell, start_cell_match = self.start_cell.match(workbook)
+        end_cell, _ = self.end_cell.match(workbook)
         
         if start_cell is None or end_cell is None:
             return (None, None,)
@@ -365,13 +365,13 @@ class RangeMatch(Match):
             start_cell_match,
         )
     
-    def find_by_dimensions(self, workbook : Workbook, worksheet : Worksheet) -> Tuple[Tuple[Cell], Any]:
+    def find_by_dimensions(self, workbook : Workbook) -> Tuple[Tuple[Cell], Any]:
         """Find range by `self.start_cell`, `self.rows` and `self.cols`.
         """
         if self.start_cell is None or self.rows is None or self.cols is None:
             return (None, None)
 
-        start_cell, start_cell_match = self.start_cell.match(workbook, worksheet)
+        start_cell, start_cell_match = self.start_cell.match(workbook)
 
         if start_cell is None:
             return (None, None,)
@@ -380,37 +380,37 @@ class RangeMatch(Match):
             tuple(start_cell.parent.iter_rows(
                 min_row=start_cell.row,
                 min_col=start_cell.col_idx,
-                max_row=start_cell.row + self.rows,
-                max_col=start_cell.col_idx + self.cols
+                max_row=start_cell.row + (self.rows - 1),
+                max_col=start_cell.col_idx + (self.cols - 1)
             )),
             start_cell_match,
         )
     
-    def find_by_contiguous_region(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell], Any]:
+    def find_by_contiguous_region(self, workbook : Workbook) -> Tuple[Tuple[Cell], Any]:
         """Find range contiguously from `self.start_cell`.
         """
-        if self.start_cell is None or not self.contiguous:
+        if self.start_cell is None:
             return (None, None,)
 
-        start_cell, start_cell_match = self.start_cell.match(workbook, worksheet)
+        start_cell, start_cell_match = self.start_cell.match(workbook)
 
         if start_cell is None:
             return (None, None,)
 
         sheet = start_cell.parent
-        rows = 0
-        cols = 0
+        rows = 1
+        cols = 1
 
         # find first blank column along first row
         # we use `iter_rows()` because `iter_cols()` isn't available in readonly mode!
-        for r in sheet.iter_rows(min_row=start_cell.row, max_row=start_cell.row, min_col=start_cell.col_idx, values_only=True):
+        for r in sheet.iter_rows(min_row=start_cell.row, max_row=start_cell.row, min_col=start_cell.col_idx + 1, values_only=True):
             for c in r:
                 if c is None or c == "":
                     break
                 cols += 1
         
         # find first blank row along first column
-        for r in sheet.iter_rows(min_row=start_cell.row, min_col=start_cell.col_idx, max_col=start_cell.col_idx, values_only=True):
+        for r in sheet.iter_rows(min_row=start_cell.row + 1, min_col=start_cell.col_idx, max_col=start_cell.col_idx, values_only=True):
             if len(r) == 0 or r[0] is None or r[0] == "":
                 break
             rows += 1
@@ -419,8 +419,8 @@ class RangeMatch(Match):
             tuple(start_cell.parent.iter_rows(
                 min_row=start_cell.row,
                 min_col=start_cell.col_idx,
-                max_row=start_cell.row + rows,
-                max_col=start_cell.col_idx + cols
+                max_row=start_cell.row + (rows - 1),
+                max_col=start_cell.col_idx + (cols - 1)
             )),
             start_cell_match
         )

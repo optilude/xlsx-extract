@@ -54,36 +54,35 @@ def test_construct_range_match():
     match.RangeMatch(
         name="A",
         sheet=sheet,
-        min_row=1,
-        max_row=5,
-        min_col=1,
-        max_col=5,
         reference="Table1",
     )
 
     r = match.RangeMatch(
         name="A",
         sheet=sheet,
-        start_cell=match.CellMatch(name="C", sheet=sheet, reference="ACell")
+        start_cell=match.CellMatch(name="C", reference="ACell")
     )
-    assert r.contiguous
+    assert r.sheet is sheet
+    assert r.start_cell.sheet is sheet
 
     r = match.RangeMatch(
         name="A",
-        sheet=sheet,
         start_cell=match.CellMatch(name="C", sheet=sheet, reference="ACell"),
         rows=10,
         cols=5,
     )
-    assert not r.contiguous
+    assert r.sheet is None
+    assert r.start_cell.sheet is sheet
 
     r = match.RangeMatch(
         name="A",
         sheet=sheet,
-        start_cell=match.CellMatch(name="C", sheet=sheet, reference="ACell"),
-        end_cell=match.CellMatch(name="D", sheet=sheet, reference="B:12"),
+        start_cell=match.CellMatch(name="C", reference="ACell"),
+        end_cell=match.CellMatch(name="D", reference="B:12"),
     )
-    assert not r.contiguous
+    assert r.sheet is sheet
+    assert r.start_cell.sheet is sheet
+    assert r.end_cell.sheet is sheet
 
     # Need start cell or reference
     with pytest.raises(AssertionError):
@@ -337,6 +336,18 @@ class TestCellMatch:
         v, s = m.match(wb)
 
         assert v.value == "Date"
+        assert s is None
+    
+    def test_find_by_reference_not_found(self):
+        wb = get_test_workbook()
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            reference="notfound")
+        
+        v, s = m.match(wb)
+
+        assert v is None
         assert s is None
 
     def test_find_by_reference_cell_with_different_sheet(self):
@@ -814,4 +825,143 @@ class TestRangeMatch:
         assert [c.value for c in v[1]] == ['Bill', datetime.datetime(2021, 1, 1), 9, 15]
         assert [c.value for c in v[2]] == ['Bob', datetime.datetime(2021, 3, 2), 14, 18]
         assert [c.value for c in v[3]] == ['Joan', datetime.datetime(2021, 6, 5), 13, 99]
+        assert s is None
+
+    def test_find_by_start_cell_not_found(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            start_cell=match.CellMatch(name="Test:Start", reference="notfound"),
+            rows=4,
+            cols=3
+        )
+        
+        v, s = m.match(wb)
+
+        assert v is None
+        assert s is None
+
+    def test_find_by_start_cell_and_size(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            start_cell=match.CellMatch(name="Test:Start", reference="'Report 1'!B5"),
+            rows=4,
+            cols=3
+        )
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 4
+        assert [c.value for c in v[0]] == [None, "Jan", "Feb"]
+        assert [c.value for c in v[1]] == ["Alpha", 1.5, 6]
+        assert [c.value for c in v[2]] == ["Beta", 2, 7]
+        assert [c.value for c in v[3]] == ["Delta", 2.5, 8]
+        assert s is None
+
+    def test_find_by_start_cell_and_size_with_match(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            start_cell=match.CellMatch(
+                name="Test:Start",
+                value=match.Comparator(operator=match.Operator.EQUAL, value="Jan"),
+                col_offset=-1
+            ),
+            rows=4,
+            cols=3
+        )
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 4
+        assert [c.value for c in v[0]] == [None, "Jan", "Feb"]
+        assert [c.value for c in v[1]] == ["Alpha", 1.5, 6]
+        assert [c.value for c in v[2]] == ["Beta", 2, 7]
+        assert [c.value for c in v[3]] == ["Delta", 2.5, 8]
+        assert s == "Jan"
+    
+    def test_find_by_start_cell_and_end_cell_with_match(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            start_cell=match.CellMatch(
+                name="Test:Start",
+                value=match.Comparator(operator=match.Operator.EQUAL, value="Jan"),
+                col_offset=-1
+            ),
+            end_cell=match.CellMatch(
+                name="Test:End",
+                value=match.Comparator(operator=match.Operator.EQUAL, value=13),
+            ),
+        )
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 4
+        assert [c.value for c in v[0]] == [None, "Jan", "Feb", "Mar"]
+        assert [c.value for c in v[1]] == ["Alpha", 1.5, 6, 11]
+        assert [c.value for c in v[2]] == ["Beta", 2, 7, 12]
+        assert [c.value for c in v[3]] == ["Delta", 2.5, 8, 13]
+        assert s == "Jan"
+    
+    def test_find_by_start_cell_and_end_cell_not_found(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            start_cell=match.CellMatch(
+                name="Test:Start",
+                value=match.Comparator(operator=match.Operator.EQUAL, value="Jan"),
+                col_offset=-1
+            ),
+            end_cell=match.CellMatch(
+                name="Test:End",
+                value=match.Comparator(operator=match.Operator.EQUAL, value=-99),
+            ),
+        )
+        
+        v, s = m.match(wb)
+
+        assert v is None
+        assert s is None
+    
+    def test_find_by_start_cell_contiguous(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            start_cell=match.CellMatch(name="Test:Start",reference="C5")
+        )
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 5
+        assert [c.value for c in v[0]] == ["Jan", "Feb", "Mar", "Apr"]
+        assert [c.value for c in v[1]] == [1.5, 6, 11, 4.6]
+        assert [c.value for c in v[2]] == [2, 7, 12, 4.7]
+        assert [c.value for c in v[3]] == [2.5, 8, 13, 4.8]
+        assert [c.value for c in v[4]] == [3, 9, 14, 4.9]
+        assert s is None
+    
+    def test_find_by_start_cell_contiguous_first_blank(self):
+        wb = get_test_workbook()
+        m = match.RangeMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            start_cell=match.CellMatch(name="Test:Start",reference="B5")
+        )
+        
+        v, s = m.match(wb)
+
+        assert len(v) == 5
+        assert [c.value for c in v[0]] == [None, "Jan", "Feb", "Mar", "Apr"]
+        assert [c.value for c in v[1]] == ["Alpha", 1.5, 6, 11, 4.6]
+        assert [c.value for c in v[2]] == ["Beta", 2, 7, 12, 4.7]
+        assert [c.value for c in v[3]] == ["Delta", 2.5, 8, 13, 4.8]
+        assert [c.value for c in v[4]] == ["Gamma", 3, 9, 14, 4.9]
         assert s is None
