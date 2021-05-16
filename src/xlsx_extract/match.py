@@ -5,10 +5,9 @@ from typing import Any, Union, Tuple, Generator
 from datetime import datetime, date, time
 from dataclasses import dataclass
 
-from openpyxl import Workbook, workbook
-import openpyxl
+from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.cell.cell import Cell
+from openpyxl.cell import Cell
 from openpyxl.utils.cell import quote_sheetname, range_to_tuple
 
 class Operator(Enum):
@@ -115,7 +114,7 @@ class Match:
     # Search by cell/range reference (name or coordinate)
     reference : str = None
 
-    def match(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Union[Cell,Tuple[Cell]], Any]:
+    def match(self, workbook : Workbook) -> Tuple[Union[Cell,Tuple[Cell]], Any]:
         """Match current parameters in worksheet and return a tuple of
         `(matched cell(s), matched value)`.
         """
