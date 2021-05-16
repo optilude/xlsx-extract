@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from .match import CellMatch, Match
+from .match import CellMatch, RangeMatch, Match
 
 @dataclass
 class Target:
@@ -8,12 +8,12 @@ class Target:
 
     There are several scenarios:
 
-    - Target reference is a single cell, source is a single cell: Copy value from source to the target
-    - Target reference is a single cell, source is a table: Use `source_row` and `source_col` to find
+    - Target is a single cell, source is a single cell: Copy value from source to the target
+    - Target is a single cell, source is a table: Use `source_row` and `source_col` to find
       a single cell and copy its value to the target.
-    - Target reference is a range/table, source is a single cell: Invalid. target a single cell
-      instead.
-    - Target reference is a range/table, source is a range/table: There are three scenarios.
+    - Target is a range/table, source is a single cell: Use `target_row` and `target_col`
+      to target a specific cell.
+    - Target is a range/table, source is a range/table: There are three scenarios.
     
       1. Replace the whole target table with the source: Set `reference` and `source` only.
       2. Replace an entire row or column in the target with a row or column in the source:
@@ -36,11 +36,11 @@ class Target:
     a cell in the middle of the table and extrapolate its row or column number.
     """
     
-    # We only target cells/ranges by reference (range, name, table name)
-    reference : str
-
     # Source cell or range we are reading from
     source : Match
+
+    # Target cell or range we are writing to
+    target : Match
 
     # If targetting a subset of a source range, look up row and/or column by header
     # These will be matched inside the range of the table only, and used to identify
@@ -58,3 +58,17 @@ class Target:
 
     # Whether to expand table or truncate values when copying (if align == False)
     expand : bool = True
+
+    def __post_init__(self):
+      
+      # Range -> Cell: Need source row and column
+      if isinstance(self.source, RangeMatch) and isinstance(self.target, CellMatch):
+        assert self.source_row is not None and self.source_col is not None, \
+          "A source row and column must be specified if the source is a range and the target is a cell"
+
+      # Cell -> Range: Need target row and column
+      if isinstance(self.source, CellMatch) and isinstance(self.target, RangeMatch):
+        assert self.target_row is not None and self.target_col is not None, \
+          "A target row and column must be specified if the source is a cell and the target is a range"
+    
+    
