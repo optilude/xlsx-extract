@@ -138,8 +138,9 @@ class Match:
                 return (ws, match)
         return (None, None)
 
-    def find_by_reference(self, workbook : Workbook, worksheet : Worksheet = None) -> Union[Cell, Tuple[Cell]]:
-        """Find the cell or range matching `self.reference`.
+    def find_by_reference(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell]]:
+        """Find the cell or range matching `self.reference`. Always returns a
+        tuple of tuples.
         """
         if self.reference is None:
             return None
@@ -178,7 +179,7 @@ class Match:
 
         # Single cell
         if r1 == r2 and c1 == c2:
-            return sheet.cell(r1, c1)
+            return ((sheet.cell(r1, c1),),)
         # Range
         else:
             return tuple(sheet.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
@@ -229,9 +230,9 @@ class CellMatch(Match):
         match = None
 
         if self.reference is not None:
-            cell = self.find_by_reference(workbook, worksheet)
-            if isinstance(cell, tuple): # got a range
-                cell = None
+            cells = self.find_by_reference(workbook, worksheet)
+            if cells is not None and len(cells) == 1 and len(cells[0]) == 1:
+                cell = cells[0][0]
         elif self.value is not None:
             cell, match = self.find_by_value(worksheet)
         
@@ -327,8 +328,6 @@ class RangeMatch(Match):
 
         if self.reference is not None:
             cells = self.find_by_reference(workbook, worksheet)
-            if cells is not None and not isinstance(cells, tuple): # single cell -> table
-                cells = ((cells,),)
         elif self.start_cell is not None:
             if self.end_cell is not None:
                 cells, match = self.find_by_end_cell(workbook, worksheet)
