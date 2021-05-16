@@ -716,6 +716,103 @@ class TestCellMatch:
         assert v.coordinate == 'C5'
         assert v.value == "Jan"
         assert s == "Date"
+    
+    def test_boundry_match(self):
+        wb = get_test_workbook()
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+        )
+
+        v, s = m.match(wb)
+        assert v.coordinate == 'B3'
+        assert v.value == "Date"
+        assert s == "Date"
+
+        # not found within boundary
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+            min_row=4,
+            min_col=4,
+            max_row=6,
+            max_col=6,
+        )
+
+        v, s = m.match(wb)
+        assert v is None
+        assert s is None
+
+        # not found within partial boundary
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+            min_row=4,
+            min_col=4,
+        )
+
+        v, s = m.match(wb)
+        assert v is None
+        assert s is None
+
+        # found within boundary
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+            min_row=2,
+            min_col=2,
+            max_row=6,
+            max_col=6,
+        )
+
+        v, s = m.match(wb)
+        assert v.coordinate == 'B3'
+        assert v.value == "Date"
+        assert s == "Date"
+
+        # found within partial boundary
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+            min_row=2,
+            min_col=2,
+        )
+
+        v, s = m.match(wb)
+        assert v.coordinate == 'B3'
+        assert v.value == "Date"
+        assert s == "Date"
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+            max_row=6,
+            max_col=6,
+        )
+
+        v, s = m.match(wb)
+        assert v.coordinate == 'B3'
+        assert v.value == "Date"
+        assert s == "Date"
+
+        m = match.CellMatch(
+            name="Test",
+            sheet=match.Comparator(match.Operator.EQUAL, "Report 1"),
+            value=match.Comparator(match.Operator.EQUAL, "Date"),
+            min_row=1,
+        )
+
+        v, s = m.match(wb)
+        assert v.coordinate == 'B3'
+        assert v.value == "Date"
+        assert s == "Date"
 
 class TestRangeMatch:
 
