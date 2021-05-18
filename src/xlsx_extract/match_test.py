@@ -334,6 +334,7 @@ class TestCellMatch:
         m = match.CellMatch(name="Test", reference="'Report 1'!B3")
         
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
 
         assert v.value == "Date"
         assert s is None
@@ -346,6 +347,7 @@ class TestCellMatch:
             reference="notfound")
         
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
 
         assert v is None
         assert s is None
@@ -359,6 +361,7 @@ class TestCellMatch:
         )
         
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
 
         assert v.value == "Date"
         assert s is None
@@ -372,6 +375,7 @@ class TestCellMatch:
         )
         
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
 
         assert v.value == "Date"
         assert s is None
@@ -381,6 +385,7 @@ class TestCellMatch:
         m = match.CellMatch(name="Test", reference="'Report 1'!A3:B3")
         
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
 
         assert v is None
         assert s is None
@@ -389,6 +394,7 @@ class TestCellMatch:
         wb = get_test_workbook()
         m = match.CellMatch(name="Test", reference="DATE_CELL")
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
 
         assert v.value == datetime.datetime(2021, 5, 1, 0, 0)
         assert s is None
@@ -398,6 +404,7 @@ class TestCellMatch:
         m = match.CellMatch(name="Test", reference="PROFIT_RANGE")
         
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
 
         assert v is None
         assert s is None
@@ -411,6 +418,7 @@ class TestCellMatch:
         )
         
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
 
         assert v is None
         assert s is None
@@ -424,6 +432,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, "Date")
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "Date"
@@ -433,6 +442,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, "notfound")
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s is None
 
@@ -445,6 +455,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.REGEX, "^Da(.+)")
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "te"
@@ -454,6 +465,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.REGEX, "^Da$")
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s is None
 
@@ -466,6 +478,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EMPTY)
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'A1'
         assert v.value is None
         assert s == ""
@@ -481,6 +494,7 @@ class TestCellMatch:
             min_col=2
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'D3'
         assert v.value is None
         assert s == ""
@@ -494,6 +508,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.NOT_EMPTY)
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "Date"
@@ -509,6 +524,7 @@ class TestCellMatch:
             min_col=2
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C5'
         assert v.value == "Jan"
         assert s == "Jan"
@@ -522,6 +538,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER, 6)
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'E6'
         assert v.value == 11
         assert s == 11
@@ -532,6 +549,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER_EQUAL, 6)
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'D6'
         assert v.value == 6
         assert s == 6
@@ -542,6 +560,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, 4.6)
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'F6'
         assert v.value == 4.6
         assert s == 4.6
@@ -552,6 +571,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS, 1.5)
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s == None
 
@@ -561,6 +581,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS, 2)
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C6'
         assert v.value == 1.5
         assert s == 1.5
@@ -571,6 +592,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS_EQUAL, 1.5)
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C6'
         assert v.value == 1.5
         assert s == 1.5
@@ -585,6 +607,7 @@ class TestCellMatch:
             max_col=6,
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'D6'
         assert v.value == 6
         assert s == 6
@@ -598,6 +621,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C3'
         assert v.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
@@ -608,6 +632,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s is None
 
@@ -617,6 +642,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER_EQUAL, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C3'
         assert v.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
@@ -627,6 +653,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s is None
 
@@ -636,6 +663,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS_EQUAL, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C3'
         assert v.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
@@ -649,6 +677,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C3'
         assert v.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
@@ -659,6 +688,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s is None
 
@@ -668,6 +698,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER_EQUAL, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C3'
         assert v.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
@@ -678,6 +709,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s is None
 
@@ -687,6 +719,7 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS_EQUAL, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C3'
         assert v.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
@@ -701,6 +734,7 @@ class TestCellMatch:
             col_offset=1,
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C3'
         assert v.value == datetime.datetime(2021, 5, 1)
         assert s == "Date"
@@ -713,6 +747,7 @@ class TestCellMatch:
             row_offset=2
         )
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'C5'
         assert v.value == "Jan"
         assert s == "Date"
@@ -727,6 +762,7 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "Date"
@@ -743,6 +779,7 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s is None
 
@@ -756,6 +793,7 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v is None
         assert s is None
 
@@ -771,6 +809,7 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "Date"
@@ -785,6 +824,7 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "Date"
@@ -798,6 +838,7 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "Date"
@@ -810,6 +851,8 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
+        if v is not None: v = v[0][0]
+        
         assert v.coordinate == 'B3'
         assert v.value == "Date"
         assert s == "Date"
