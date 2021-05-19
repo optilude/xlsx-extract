@@ -87,7 +87,7 @@ class Target:
 
     def extract(self, source_workbook : Workbook, target_workbook : Workbook) -> Tuple[Union[Cell,Tuple[Cell]], Any]:
         """Extract source cell from the source workbook and update target workbook.
-
+i
         Returns source match.
         """
 
@@ -166,18 +166,29 @@ class Target:
         ), "%s: Both target row and target column are set but cell has not been located (this is a bug - it should never happen)" % self.source.name
 
         if source_is_range:
-            self.update_table(
-                source=source_c,
-                target=target_c,
-                target_match=self.target,
-                source_row_idx=None if source_row_cell is None else source_row_cell.row - source_c[0][0].row,
-                source_col_idx=None if source_col_cell is None else source_col_cell.column  - source_c[0][0].column,
-                target_row_idx=None if target_row_cell is None else target_row_cell.row - target_c[0][0].row,
-                target_col_idx=None if target_col_cell is None else target_col_cell.column - target_c[0][0].column,
-                align=self.align,
-                expand=self.expand
-            )
+            if all(c is None for c in (source_row_cell, source_col_cell, target_row_cell, target_col_cell,)):
+                # Update/replace an entire table
+                self.update_table(
+                    source=source_c,
+                    target=target_c,
+                    target_match=self.target,
+                    expand=self.expand
+                )
+            else:
+                # Update/replace a row or column (possibly transposed)
+                self.update_vector(
+                    source=source_c,
+                    target=target_c,
+                    target_match=self.target,
+                    source_in_row=(source_row_cell is not None),
+                    source_idx=source_row_cell.row - source_c[0][0].row if source_row_cell is not None else source_col_cell.column  - source_c[0][0].column if source_col_cell is not None else None,
+                    target_in_row=(target_col_cell is not None),
+                    target_idx=target_row_cell.row - target_c[0][0].row if target_row_cell is not None else target_col_cell.column  - target_c[0][0].column if target_col_cell is not None else None,
+                    align=self.align,
+                    expand=self.expand
+                )
         else:
+            # Update/replace a single cell
             self.copy_value(source_c[0][0], target_c[0][0])
 
         return original_match
@@ -219,76 +230,73 @@ class Target:
         """
         target.value = source.value
     
+    def update_vector(self,
+        source : Tuple[Tuple[Cell]],
+        target : Tuple[Tuple[Cell]],
+        target_match : RangeMatch,
+        source_in_row : bool,
+        source_idx : int,
+        target_in_row : bool,
+        target_idx : int,
+        align : bool = False,
+        expand : bool = True,
+    ):
+        """Replace a single row or column in target with a single row or
+        column in source.
+        """
+
+        assert source_idx is not None, \
+            "One of source row and column index must be set (this is a bug - it should not happen)"
+        assert target_idx is not None, \
+            "One of target row and column index must be set (this is a bug - it should not happen)"
+
+        # Get the relevant source and target row or column into a single list
+        source_vector = source[source_idx] if source_in_row else [c[source_idx] for c in source]
+        target_vector = target[target_idx] if target_in_row else [c[target_idx] for c in target]
+    
+        if align:
+            # Find first row or column and use as labels
+            source_labels = [c.value for c in [source[0] if source_in_row else [c[0] for c in source]]]
+            target_labels = [c.value for c in [target[0] if target_in_row else [c[0] for c in target]]]
+
+            source_lookup = dict(zip(source_labels, source_vector))
+
+            # For each target label, find and copy the corresponding source cell
+            for target_label, target_cell in zip(target_labels, target_vector):
+                if target_label is None or target_label == "":
+                    continue
+                
+                source_cell = source_lookup.get(target_label, None)
+                if source_cell is not None:
+                    self.copy_value(source_cell, target_cell)
+
+        else:        
+
+            if expand:
+                # TODO: `expand` support - may involve updating named references
+                pass
+
+            # Replace each value in the target bector with the corresponding value
+            # in the target vector
+            for source_cell, target_cell in zip(source_vector, target_vector):
+                self.copy_value(source_cell, target_cell)
+
     def update_table(self,
         source : Tuple[Tuple[Cell]],
         target : Tuple[Tuple[Cell]],
         target_match : RangeMatch,
-        source_row_idx : int = None,
-        source_col_idx : int = None,
-        target_row_idx : int = None,
-        target_col_idx : int = None,
-        align : bool = False,
         expand : bool = True,
     ):
         """Update target with source (easier said than done)
         """
 
-        replace_vector = not all(p is None for p in [source_row_idx, source_col_idx, target_row_idx, target_col_idx])
+        if expand:
+            # TODO: `expand` support - may involve updating named references
+            pass
         
-        # Replace a single row or column
-        if replace_vector:
+        for source_row, target_row in zip(source, target):
+            for source_cell, target_cell in zip(source_row, target_row):
+                self.copy_value(source_cell, target_cell)
 
-            assert not (source_row_idx is not None and source_col_idx is not None), \
-                "Source row and column index both set (this is a bug - it should not happen)"
-            assert not (target_row_idx is not None and target_col_idx is not None), \
-                "Target row and column index both set (this is a bug - it should not happen)"
-
-            assert source_row_idx is not None or source_col_idx is not None, \
-                "One of source row and column index must be set (this is a bug - it should not happen)"
-            assert target_row_idx is not None or target_col_idx is not None, \
-                "One of target row and column index must be set (this is a bug - it should not happen)"
-
-            # Get the relevant source and target row or column into a single list
-            source_horizontal = (source_row_idx is not None)
-            target_horizontal = (target_row_idx is not None)
-
-            source_vector = source[source_row_idx] if source_horizontal else [c[source_col_idx] for c in source]
-            target_vector = target[target_row_idx] if target_horizontal else [c[target_col_idx] for c in target]
+            
         
-            if align:
-                # Find first row or column and use as labels
-                source_labels = source[0].value if source_horizontal else [c[0] for c in source]
-                target_labels = target[0].value if target_horizontal else [c[0] for c in target]
-
-                source_lookup = dict(zip(source_labels, source_vector))
-
-                # For each target label, find and copy the corresponding source cell
-                for target_label, target_cell in zip(target_labels, target_vector):
-                    if target_label is None or target_label == "":
-                        continue
-                    
-                    source_cell = source_lookup.get(target_label, None)
-                    if source_cell is not None:
-                        self.copy_value(source_cell, target_cell)
-
-            else:        
-
-                if expand:
-                    # TODO: `expand` support - may involve updating named references
-                    pass
-
-                # Replace each value in the target bector with the corresponding value
-                # in the target vector
-                for source_cell, target_cell in zip(source_vector, target_vector):
-                    self.copy_value(source_cell, target_cell)
-            
-        # Replace entire table
-        else:
-            
-            if expand:
-                # TODO: `expand` support - may involve updating named references
-                pass
-            
-            for source_row, target_row in zip(source, target):
-                for source_cell, target_cell in zip(source_row, target_row):
-                    self.copy_value(source_cell, target_cell)
