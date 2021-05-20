@@ -6,9 +6,63 @@ from datetime import datetime, date, time
 from dataclasses import dataclass
 
 from openpyxl import Workbook
+from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.worksheet.table import Table
+from openpyxl.worksheet import worksheet
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell import Cell
 from openpyxl.utils.cell import quote_sheetname, range_to_tuple
+
+def get_defined_name(workbook : Workbook, worksheet : Worksheet, name : str) -> DefinedName:
+    """Get a locally or globally defined name object
+    """
+
+    defined_name = None
+    if worksheet is not None:
+        defined_name = get_locally_defined_name(worksheet, name)
+
+    if defined_name is None:
+        defined_name = get_globally_defined_name(workbook, name)
+    
+    return defined_name
+
+def get_locally_defined_name(worksheet : Worksheet, name : str) -> DefinedName:
+    """Look up a defined name local to the worksheet
+    """
+
+    workbook = worksheet.parent
+    
+    # First try a locally defined name
+    sheet_id = workbook.get_index(worksheet)
+    if name in workbook.defined_names.localnames(sheet_id):
+        defined_name = workbook.defined_names.get(name, sheet_id)
+        if defined_name is not None:
+            return defined_name
+    
+    return None
+
+def get_globally_defined_name(workbook : Workbook, name : str) -> DefinedName:
+    """Look up a defined name global to the workbook
+    """
+
+    return workbook.defined_names.get(name, None)
+
+def get_table(worksheet : Worksheet, name : str) -> Table:
+    """Look up a named table
+    """
+
+    if not hasattr(worksheet, 'tables') or not name in worksheet.tables:
+        return None
+
+    return worksheet.tables[name]
+
+def add_sheet_to_reference(worksheet : Worksheet, ref : str) -> str:
+    """Add worksheet name to table if needed
+    """
+    if '!' not in ref:
+        assert worksheet is not None, "Sheet must be given if reference does not contain a sheet name"
+        ref = "%s!%s" % (quote_sheetname(worksheet.title), ref)
+    return ref
 
 class Operator(Enum):
 
@@ -135,37 +189,19 @@ class Match:
         """Find the cell or range matching `self.reference`. Always returns a
         tuple of tuples.
         """
-        if self.reference is None:
+        if self.reference is None or self.reference == "":
             return None
         
-        ref = self.reference
-        found_locally = False
-
-        # First try a locally defined name
-        if worksheet is not None:
-            sheet_id = workbook.get_index(worksheet)
-            if self.reference in workbook.defined_names.localnames(sheet_id):
-                defined_name = workbook.defined_names.get(self.reference, sheet_id)
-                if defined_name is not None:
-                    ref = defined_name.attr_text
-                    found_locally = True
+        defined_name = get_defined_name(workbook, worksheet, self.reference)
+        table = get_table(worksheet, self.reference)
         
-        # Then try a globally defined name
-        if not found_locally and self.reference in workbook.defined_names:
-            ref = workbook.defined_names[self.reference].attr_text
-        # Then try a named table (note: readonly sheets don't have a tables attribute)
-        elif worksheet is not None and hasattr(worksheet, 'tables') and self.reference in worksheet.tables:
-            ref = worksheet.tables[self.reference].ref
+        ref = \
+            defined_name.attr_text if defined_name is not None \
+            else table.ref if table is not None \
+            else self.reference
 
-        if ref is None or ref == "":
-            return None
+        ref = add_sheet_to_reference(worksheet, ref)
 
-        # Add sheet name to reference if needed
-        if '!' not in ref:
-            assert worksheet is not None, "Sheet must be given if reference does not contain a sheet name"
-            ref = "%s!%s" % (quote_sheetname(worksheet.title), ref)
-
-        # Get range numerically
         sheet_name, (c1, r1, c2, r2) = range_to_tuple(ref)
 
         # not found
