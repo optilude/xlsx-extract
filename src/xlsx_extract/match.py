@@ -6,63 +6,15 @@ from datetime import datetime, date, time
 from dataclasses import dataclass
 
 from openpyxl import Workbook
-from openpyxl.workbook.defined_name import DefinedName
-from openpyxl.worksheet.table import Table
-from openpyxl.worksheet import worksheet
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell import Cell
-from openpyxl.utils.cell import quote_sheetname, range_to_tuple
+from openpyxl.utils.cell import range_to_tuple
 
-def get_defined_name(workbook : Workbook, worksheet : Worksheet, name : str) -> DefinedName:
-    """Get a locally or globally defined name object
-    """
-
-    defined_name = None
-    if worksheet is not None:
-        defined_name = get_locally_defined_name(worksheet, name)
-
-    if defined_name is None:
-        defined_name = get_globally_defined_name(workbook, name)
-    
-    return defined_name
-
-def get_locally_defined_name(worksheet : Worksheet, name : str) -> DefinedName:
-    """Look up a defined name local to the worksheet
-    """
-
-    workbook = worksheet.parent
-    
-    # First try a locally defined name
-    sheet_id = workbook.get_index(worksheet)
-    if name in workbook.defined_names.localnames(sheet_id):
-        defined_name = workbook.defined_names.get(name, sheet_id)
-        if defined_name is not None:
-            return defined_name
-    
-    return None
-
-def get_globally_defined_name(workbook : Workbook, name : str) -> DefinedName:
-    """Look up a defined name global to the workbook
-    """
-
-    return workbook.defined_names.get(name, None)
-
-def get_table(worksheet : Worksheet, name : str) -> Table:
-    """Look up a named table
-    """
-
-    if not hasattr(worksheet, 'tables') or not name in worksheet.tables:
-        return None
-
-    return worksheet.tables[name]
-
-def add_sheet_to_reference(worksheet : Worksheet, ref : str) -> str:
-    """Add worksheet name to table if needed
-    """
-    if '!' not in ref:
-        assert worksheet is not None, "Sheet must be given if reference does not contain a sheet name"
-        ref = "%s!%s" % (quote_sheetname(worksheet.title), ref)
-    return ref
+from .utils import (
+    get_defined_name,
+    get_table,
+    add_sheet_to_reference
+)
 
 class Operator(Enum):
 

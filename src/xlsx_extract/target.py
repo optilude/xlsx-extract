@@ -6,6 +6,32 @@ from openpyxl import Workbook
 from openpyxl.cell import Cell
 
 from .match import Match, CellMatch, RangeMatch
+from .utils import copy_value, triangulate_cell, update_table, update_vector
+
+def locate_cell_in_range(workbook : Workbook, range_cells : Tuple[Tuple[Cell]], cell_match : CellMatch) -> Cell:
+    """Use `cell_match` to find a cell within the range
+    """
+
+    if len(range_cells) == 0 or len(range_cells[0]) == 0 or len(range_cells[-1]) == 0:
+        return None
+
+    m = deepcopy(cell_match)
+                
+    m.min_row = range_cells[0][0].row
+    m.min_col = range_cells[0][0].column
+    m.max_row = range_cells[-1][-1].row
+    m.max_col = range_cells[-1][-1].column
+
+    cell, _ = m.match(workbook)
+
+    if (
+        cell is not None and (
+            cell.column < m.min_col or cell.column > m.max_col or 
+            cell.row < m.min_row or cell.row > m.max_row
+    )):
+        return None
+
+    return cell
 
 @dataclass
 class Target:
@@ -113,32 +139,32 @@ i
 
         if source_is_range:
             if self.source_row is not None:
-                source_row_cell = self.locate_cell_in_range(source_workbook, source_c, self.source_row)
+                source_row_cell = locate_cell_in_range(source_workbook, source_c, self.source_row)
                 if source_row_cell is None:
                     return NOT_FOUND
             if self.source_col is not None:
-                source_col_cell = self.locate_cell_in_range(source_workbook, source_c, self.source_col)
+                source_col_cell = locate_cell_in_range(source_workbook, source_c, self.source_col)
                 if source_col_cell is None:
                     return NOT_FOUND
         
         if target_is_range:
             if self.target_row is not None:
-                target_row_cell = self.locate_cell_in_range(target_workbook, target_c, self.target_row)
+                target_row_cell = locate_cell_in_range(target_workbook, target_c, self.target_row)
                 if target_row_cell is None:
                     return NOT_FOUND
             if self.target_col is not None:
-                target_col_cell = self.locate_cell_in_range(target_workbook, target_c, self.target_col)
+                target_col_cell = locate_cell_in_range(target_workbook, target_c, self.target_col)
                 if target_col_cell is None:
                     return NOT_FOUND
 
         # If we have a range and two locators, resolve to a single cell
 
         if source_is_range and source_row_cell is not None and source_col_cell is not None:
-            source_c = ((self.triangulate_cell(source_row_cell, source_col_cell),),)
+            source_c = ((triangulate_cell(source_row_cell, source_col_cell),),)
             source_is_range = False
         
         if target_is_range and target_row_cell is not None and target_col_cell is not None:
-            target_c = ((self.triangulate_cell(target_row_cell, target_col_cell),),)
+            target_c = ((triangulate_cell(target_row_cell, target_col_cell),),)
             target_is_range = False
         
         # Both source and target might now have changed, but both should be the same type
@@ -168,18 +194,18 @@ i
         if source_is_range:
             if all(c is None for c in (source_row_cell, source_col_cell, target_row_cell, target_col_cell,)):
                 # Update/replace an entire table
-                self.update_table(
+                update_table(
                     source=source_c,
                     target=target_c,
-                    target_match=self.target,
+                    target_reference=self.target.reference,
                     expand=self.expand
                 )
             else:
                 # Update/replace a row or column (possibly transposed)
-                self.update_vector(
+                update_vector(
                     source=source_c,
                     target=target_c,
-                    target_match=self.target,
+                    target_reference=self.target.reference,
                     source_in_row=(source_row_cell is not None),
                     source_idx=source_row_cell.row - source_c[0][0].row if source_row_cell is not None else source_col_cell.column  - source_c[0][0].column if source_col_cell is not None else None,
                     target_in_row=(target_col_cell is not None),
@@ -189,114 +215,10 @@ i
                 )
         else:
             # Update/replace a single cell
-            self.copy_value(source_c[0][0], target_c[0][0])
+            copy_value(source_c[0][0], target_c[0][0])
 
         return original_match
 
-    def locate_cell_in_range(self, workbook : Workbook, range_cells : Tuple[Tuple[Cell]], cell_match : CellMatch) -> Cell:
-        """Use `cell_match` to find a cell within the range
-        """
-
-        if len(range_cells) == 0 or len(range_cells[0]) == 0 or len(range_cells[-1]) == 0:
-            return None
-
-        m = deepcopy(cell_match)
-                    
-        m.min_row = range_cells[0][0].row
-        m.min_col = range_cells[0][0].column
-        m.max_row = range_cells[-1][-1].row
-        m.max_col = range_cells[-1][-1].column
-
-        cell, _ = m.match(workbook)
-
-        if (
-            cell is not None and (
-                cell.column < m.min_col or cell.column > m.max_col or 
-                cell.row < m.min_row or cell.row > m.max_row
-        )):
-            return None
-
-        return cell
-    
-    def triangulate_cell(self, row : Cell, col : Cell) -> Cell:
-        """Find the cell at the intersection of the row of `row`
-        and the column of `col`.
-        """
-        assert row.parent is col.parent
-        return row.parent.cell(row.row, col.column)
-    
-    def copy_value(self, source : Cell, target : Cell):
-        """Copy a single value from source to target
-        """
-        target.value = source.value
-    
-    def update_vector(self,
-        source : Tuple[Tuple[Cell]],
-        target : Tuple[Tuple[Cell]],
-        target_match : RangeMatch,
-        source_in_row : bool,
-        source_idx : int,
-        target_in_row : bool,
-        target_idx : int,
-        align : bool = False,
-        expand : bool = True,
-    ):
-        """Replace a single row or column in target with a single row or
-        column in source.
-        """
-
-        assert source_idx is not None, \
-            "One of source row and column index must be set (this is a bug - it should not happen)"
-        assert target_idx is not None, \
-            "One of target row and column index must be set (this is a bug - it should not happen)"
-
-        # Get the relevant source and target row or column into a single list
-        source_vector = source[source_idx] if source_in_row else [c[source_idx] for c in source]
-        target_vector = target[target_idx] if target_in_row else [c[target_idx] for c in target]
-    
-        if align:
-            # Find first row or column and use as labels
-            source_labels = [c.value for c in [source[0] if source_in_row else [c[0] for c in source]]]
-            target_labels = [c.value for c in [target[0] if target_in_row else [c[0] for c in target]]]
-
-            source_lookup = dict(zip(source_labels, source_vector))
-
-            # For each target label, find and copy the corresponding source cell
-            for target_label, target_cell in zip(target_labels, target_vector):
-                if target_label is None or target_label == "":
-                    continue
-                
-                source_cell = source_lookup.get(target_label, None)
-                if source_cell is not None:
-                    self.copy_value(source_cell, target_cell)
-
-        else:        
-
-            if expand:
-                # TODO: `expand` support - may involve updating named references
-                pass
-
-            # Replace each value in the target bector with the corresponding value
-            # in the target vector
-            for source_cell, target_cell in zip(source_vector, target_vector):
-                self.copy_value(source_cell, target_cell)
-
-    def update_table(self,
-        source : Tuple[Tuple[Cell]],
-        target : Tuple[Tuple[Cell]],
-        target_match : RangeMatch,
-        expand : bool = True,
-    ):
-        """Update target with source (easier said than done)
-        """
-
-        if expand:
-            # TODO: `expand` support - may involve updating named references
-            pass
-        
-        for source_row, target_row in zip(source, target):
-            for source_cell, target_cell in zip(source_row, target_row):
-                self.copy_value(source_cell, target_cell)
 
             
         
