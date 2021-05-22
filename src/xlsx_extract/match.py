@@ -341,9 +341,9 @@ class RangeMatch(Match):
         return (
             tuple(start_cell.parent.iter_rows(
                 min_row=start_cell.row,
-                min_col=start_cell.col_idx,
+                min_col=start_cell.column,
                 max_row=end_cell.row,
-                max_col=end_cell.col_idx
+                max_col=end_cell.column
             )),
             start_cell_match,
         )
@@ -364,9 +364,9 @@ class RangeMatch(Match):
         return (
             tuple(start_cell.parent.iter_rows(
                 min_row=start_cell.row,
-                min_col=start_cell.col_idx,
+                min_col=start_cell.column,
                 max_row=start_cell.row + (self.rows - 1),
-                max_col=start_cell.col_idx + (self.cols - 1)
+                max_col=start_cell.column + (self.cols - 1)
             )),
             start_cell_match,
         )
@@ -390,14 +390,14 @@ class RangeMatch(Match):
 
         # find first blank column along first row
         # we use `iter_rows()` because `iter_cols()` isn't available in readonly mode!
-        for r in sheet.iter_rows(min_row=start_cell.row, max_row=start_cell.row, min_col=start_cell.col_idx + 1, values_only=True):
+        for r in sheet.iter_rows(min_row=start_cell.row, max_row=start_cell.row, min_col=start_cell.column + 1, values_only=True):
             for c in r:
                 if c is None or c == "":
                     break
                 cols += 1
         
         # find first blank row along first column
-        for r in sheet.iter_rows(min_row=start_cell.row + 1, min_col=start_cell.col_idx, max_col=start_cell.col_idx, values_only=True):
+        for r in sheet.iter_rows(min_row=start_cell.row + 1, min_col=start_cell.column, max_col=start_cell.column, values_only=True):
             if len(r) == 0 or r[0] is None or r[0] == "":
                 break
             rows += 1
@@ -405,9 +405,9 @@ class RangeMatch(Match):
         return (
             tuple(start_cell.parent.iter_rows(
                 min_row=start_cell.row,
-                min_col=start_cell.col_idx,
+                min_col=start_cell.column,
                 max_row=start_cell.row + (rows - 1),
-                max_col=start_cell.col_idx + (cols - 1)
+                max_col=start_cell.column + (cols - 1)
             )),
             start_cell_match
         )
