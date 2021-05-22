@@ -113,7 +113,6 @@ class Target:
 
     def extract(self, source_workbook : Workbook, target_workbook : Workbook) -> Tuple[Union[Cell,Tuple[Cell]], Any]:
         """Extract source cell from the source workbook and update target workbook.
-i
         Returns source match.
         """
 

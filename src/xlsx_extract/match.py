@@ -12,7 +12,7 @@ from openpyxl.utils.cell import range_to_tuple
 
 from .utils import (
     get_defined_name,
-    get_table,
+    get_named_table,
     add_sheet_to_reference
 )
 
@@ -145,7 +145,7 @@ class Match:
             return None
         
         defined_name = get_defined_name(workbook, worksheet, self.reference)
-        table = get_table(worksheet, self.reference)
+        table = get_named_table(worksheet, self.reference)
         
         ref = \
             defined_name.attr_text if defined_name is not None \

@@ -5,7 +5,7 @@ from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.worksheet.table import Table
 from openpyxl.cell import Cell
-from openpyxl.utils.cell import quote_sheetname
+from openpyxl.utils.cell import quote_sheetname, absolute_coordinate
 
 def get_defined_name(workbook : Workbook, worksheet : Worksheet, name : str) -> DefinedName:
     """Get a locally or globally defined name object
@@ -27,7 +27,7 @@ def get_locally_defined_name(worksheet : Worksheet, name : str) -> DefinedName:
     workbook = worksheet.parent
     
     # First try a locally defined name
-    sheet_id = workbook.get_index(worksheet)
+    sheet_id = workbook.index(worksheet)
     if name in workbook.defined_names.localnames(sheet_id):
         defined_name = workbook.defined_names.get(name, sheet_id)
         if defined_name is not None:
@@ -41,7 +41,7 @@ def get_globally_defined_name(workbook : Workbook, name : str) -> DefinedName:
 
     return workbook.defined_names.get(name, None)
 
-def get_table(worksheet : Worksheet, name : str) -> Table:
+def get_named_table(worksheet : Worksheet, name : str) -> Table:
     """Look up a named table
     """
 
@@ -70,9 +70,45 @@ def copy_value(source : Cell, target : Cell):
     """
     target.value = source.value
 
-def update_reference(worksheet : Worksheet, reference : str, table : Tuple[Tuple[Cell]]):
+def get_reference_for_table(table : Tuple[Tuple[Cell]]) -> str:
+    """Get an absolute cell range reference for the given table
+    """
+    assert len(table) > 0 and len(table[0]) > 0, \
+        "Cannot create a reference for an empty table"
+    
+    first_cell = table[0][0]
+    last_cell = table[-1][-1]
+
+    first_cell_coordinate = absolute_coordinate(first_cell.coordinate)
+    last_cell_coordinate = absolute_coordinate(last_cell.coordinate)
+
+    worksheet = first_cell.parent
+
+    if first_cell.coordinate == last_cell.coordinate:
+        return "%s!%s" % (quote_sheetname(worksheet.title), first_cell_coordinate)
+    else:
+        return "%s!%s:%s" % (quote_sheetname(worksheet.title), first_cell_coordinate, last_cell_coordinate)
+
+def update_name(worksheet : Worksheet, reference : str, table : Tuple[Tuple[Cell]]) -> bool:
     """Update a named reference or table to point to the table.
     """
+
+    assert len(table) > 0 and len(table[0]) > 0, \
+        "Cannot update name for an empty table"
+
+    workbook = worksheet.parent
+
+    defined_name = get_defined_name(workbook, worksheet, reference)
+    if defined_name is not None:
+        defined_name.attr_text = get_reference_for_table(table)
+        return True
+    
+    named_table = get_named_table(worksheet, reference)
+    if named_table is not None:
+        named_table.ref = "%s:%s" % (table[0][0].coordinate, table[-1][-1].coordinate)
+        return True
+    
+    return False
 
 def resize_table(table : Tuple[Tuple[Cell]], rows : int, cols : int, reference : str = None) -> Tuple[Tuple[Cell]]:
     """Add or remove rows or columns at the end of of `table` so that it has the dimensions
@@ -84,6 +120,10 @@ def resize_table(table : Tuple[Tuple[Cell]], rows : int, cols : int, reference :
     assert len(table) > 0 and len(table[0]) > 0, \
         "Cannot resize an empty range"
     
+    # No change
+    if rows == len(table) and cols == len(table[0]):
+        return table
+
     rows_delta = rows - len(table)
     cols_delta = cols - len(table[0])
 
@@ -118,7 +158,7 @@ def resize_table(table : Tuple[Tuple[Cell]], rows : int, cols : int, reference :
     )
 
     if reference is not None and (rows_delta != 0 or cols_delta != 0):
-        update_reference(sheet, reference, new_table)
+        update_name(sheet, reference, new_table)
     
     return new_table
 
@@ -137,6 +177,9 @@ def update_vector(
     """Replace a single row or column in target with a single row or
     column in source.
     """
+
+    assert len(target) > 0 and len(target[0]) > 0, \
+        "Cannot target an empty table (this is a bug - it should not happen)"
 
     assert source_idx is not None, \
         "One of source row and column index must be set (this is a bug - it should not happen)"
@@ -166,8 +209,11 @@ def update_vector(
     else:        
 
         if expand:
-            # TODO: `expand` support - may involve updating named references
-            pass
+            rows = len(source_vector) if not target_in_row else len(target)
+            cols = len(source_vector) if target_in_row else len(target[0])
+
+            target = resize_table(target, rows, cols, target_reference)
+            target_vector = target[target_idx] if target_in_row else [c[target_idx] for c in target]
 
         # Replace each value in the target bector with the corresponding value
         # in the target vector
@@ -183,9 +229,11 @@ def update_table(
     """Update target table with source table
     """
 
+    assert len(target) > 0 and len(target[0]) > 0, \
+        "Cannot target an empty table (this is a bug - it should not happen)"
+
     if expand:
-        # TODO: `expand` support - may involve updating named references
-        pass
+        target = resize_table(target, len(source), len(source[0]), target_reference)
     
     for source_row, target_row in zip(source, target):
         for source_cell, target_cell in zip(source_row, target_row):
