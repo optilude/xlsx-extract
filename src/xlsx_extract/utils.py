@@ -162,64 +162,6 @@ def resize_table(table : Tuple[Tuple[Cell]], rows : int, cols : int, reference :
     
     return new_table
 
-
-def update_vector(
-    source : Tuple[Tuple[Cell]],
-    target : Tuple[Tuple[Cell]],
-    target_reference : str,
-    source_in_row : bool,
-    source_idx : int,
-    target_in_row : bool,
-    target_idx : int,
-    align : bool = False,
-    expand : bool = True,
-):
-    """Replace a single row or column in target with a single row or
-    column in source.
-    """
-
-    assert len(target) > 0 and len(target[0]) > 0, \
-        "Cannot target an empty table (this is a bug - it should not happen)"
-
-    assert source_idx is not None, \
-        "One of source row and column index must be set (this is a bug - it should not happen)"
-    assert target_idx is not None, \
-        "One of target row and column index must be set (this is a bug - it should not happen)"
-
-    # Get the relevant source and target row or column into a single list
-    source_vector = source[source_idx] if source_in_row else [c[source_idx] for c in source]
-    target_vector = target[target_idx] if target_in_row else [c[target_idx] for c in target]
-
-    if align:
-        # Find first row or column and use as labels
-        source_labels = [c.value for c in [source[0] if source_in_row else [c[0] for c in source]]]
-        target_labels = [c.value for c in [target[0] if target_in_row else [c[0] for c in target]]]
-
-        source_lookup = dict(zip(source_labels, source_vector))
-
-        # For each target label, find and copy the corresponding source cell
-        for target_label, target_cell in zip(target_labels, target_vector):
-            if target_label is None or target_label == "":
-                continue
-            
-            source_cell = source_lookup.get(target_label, None)
-            if source_cell is not None:
-                copy_value(source_cell, target_cell)
-
-    else:        
-
-        if expand:
-            rows = len(source_vector) if not target_in_row else len(target)
-            cols = len(source_vector) if target_in_row else len(target[0])
-
-            target = resize_table(target, rows, cols, target_reference)
-            target_vector = target[target_idx] if target_in_row else [c[target_idx] for c in target]
-
-        # Replace each value in the target bector with the corresponding value
-        # in the target vector
-        for source_cell, target_cell in zip(source_vector, target_vector):
-            copy_value(source_cell, target_cell)
-
 def update_table(
     source : Tuple[Tuple[Cell]],
     target : Tuple[Tuple[Cell]],
@@ -231,6 +173,9 @@ def update_table(
 
     assert len(target) > 0 and len(target[0]) > 0, \
         "Cannot target an empty table (this is a bug - it should not happen)"
+    
+    assert len(source) > 0 and len(source[0]) > 0, \
+        "Cannot copy an empty table (this is a bug - it should not happen)"
 
     if expand:
         target = resize_table(target, len(source), len(source[0]), target_reference)
@@ -238,3 +183,96 @@ def update_table(
     for source_row, target_row in zip(source, target):
         for source_cell, target_cell in zip(source_row, target_row):
             copy_value(source_cell, target_cell)
+
+def extract_vector(table : Tuple[Tuple[Cell]], in_row : bool, index : int) -> Tuple[Cell]:
+    """Get a tuple of the cells in the row at `index` if `in_row`, or in the
+    column at `index` if not `in_row`.
+    """
+    return (table[index] if in_row else [c[index] for c in table])
+
+def align_vectors(
+    source : Tuple[Tuple[Cell]],
+    source_in_row : bool,
+    source_idx : int,
+    target : Tuple[Tuple[Cell]],
+    target_in_row : bool,
+    target_idx : int,
+):
+    """Replace a vector in `target` with a vector in `source` by matching
+    labels in the first row/column of each.
+    """
+
+    assert len(target) > 0 and len(target[0]) > 0, \
+        "Cannot target an empty table (this is a bug - it should not happen)"
+
+    assert source_idx is not None, \
+        "One of source row and column index must be set (this is a bug - it should not happen)"
+    assert target_idx is not None, \
+        "One of target row and column index must be set (this is a bug - it should not happen)"
+
+    to_label = lambda s: s.strip().lower() if isinstance(s, (str, bytes,)) else s
+
+    # Get the relevant source and target row or column into a single list
+    source_vector = extract_vector(source, source_in_row, source_idx)
+    target_vector = extract_vector(target, target_in_row, target_idx)
+
+    assert source_idx > 0 and source_idx < len(source_vector), \
+        "Source row/column is outside of the target table (this is a bug - it should not happen)"
+    assert target_idx > 0 and target_idx < len(target_vector), \
+        "Target row/column is outside of the target table (this is a bug - it should not happen)"
+
+    # Find first row or column and use as labels
+    source_labels = (to_label(c.value) for c in extract_vector(source, source_in_row, 0))
+    target_labels = (to_label(c.value) for c in extract_vector(target, target_in_row, 0))
+
+    source_lookup = dict(zip(source_labels, source_vector))
+
+    # For each target label, find and copy the corresponding source cell
+    for target_label, target_cell in zip(target_labels, target_vector):
+        source_cell = source_lookup.get(target_label, None)
+        if source_cell is not None:
+            copy_value(source_cell, target_cell)
+
+
+def replace_vector(
+    source : Tuple[Tuple[Cell]],
+    source_in_row : bool,
+    source_idx : int,
+    target : Tuple[Tuple[Cell]],
+    target_in_row : bool,
+    target_idx : int,
+    target_reference : str,
+    expand : bool,
+):
+    """Replace a single row or column in target with a single row or column in source.
+    """
+
+    assert len(target) > 0 and len(target[0]) > 0, \
+        "Cannot target an empty table (this is a bug - it should not happen)"
+
+    assert source_idx is not None, \
+        "One of source row and column index must be set (this is a bug - it should not happen)"
+    assert target_idx is not None, \
+        "One of target row and column index must be set (this is a bug - it should not happen)"
+
+    # Get the relevant source and target row or column into a single list
+    source_vector = extract_vector(source, source_in_row, source_idx)
+    target_vector = extract_vector(target, target_in_row, target_idx)
+
+    if expand:
+        rows = len(source_vector) if not target_in_row else len(target)
+        cols = len(source_vector) if target_in_row else len(target[0])
+
+        target = resize_table(target, rows, cols, target_reference)
+        target_vector = extract_vector(target, target_in_row, target_idx)
+
+    assert source_idx > 0 and source_idx < len(source_vector), \
+        "Source row/column is outside of the target table (this is a bug - it should not happen)"
+    assert target_idx > 0 and target_idx < len(target_vector), \
+        "Target row/column is outside of the target table (this is a bug - it should not happen)"
+
+    # Replace each value in the target bector with the corresponding value
+    # in the target vector
+    for source_cell, target_cell in zip(source_vector, target_vector):
+        copy_value(source_cell, target_cell)
+

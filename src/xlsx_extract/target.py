@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from openpyxl.cell import Cell
 
 from .match import Match, CellMatch, RangeMatch
-from .utils import copy_value, triangulate_cell, update_table, update_vector
+from .utils import copy_value, triangulate_cell, update_table, replace_vector, align_vectors
 
 def locate_cell_in_range(workbook : Workbook, range_cells : Tuple[Tuple[Cell]], cell_match : CellMatch) -> Cell:
     """Use `cell_match` to find a cell within the range
@@ -191,27 +191,45 @@ class Target:
         ), "%s: Both target row and target column are set but cell has not been located (this is a bug - it should never happen)" % self.source.name
 
         if source_is_range:
+            # Update/replace an entire table
             if all(c is None for c in (source_row_cell, source_col_cell, target_row_cell, target_col_cell,)):
-                # Update/replace an entire table
                 update_table(
                     source=source_c,
                     target=target_c,
                     target_reference=self.target.reference,
                     expand=self.expand
                 )
+            # Update a vector
             else:
-                # Update/replace a row or column (possibly transposed)
-                update_vector(
-                    source=source_c,
-                    target=target_c,
-                    target_reference=self.target.reference,
-                    source_in_row=(source_row_cell is not None),
-                    source_idx=source_row_cell.row - source_c[0][0].row if source_row_cell is not None else source_col_cell.column  - source_c[0][0].column if source_col_cell is not None else None,
-                    target_in_row=(target_col_cell is not None),
-                    target_idx=target_row_cell.row - target_c[0][0].row if target_row_cell is not None else target_col_cell.column  - target_c[0][0].column if target_col_cell is not None else None,
-                    align=self.align,
-                    expand=self.expand
-                )
+                source_in_row=(source_row_cell is not None)
+                target_in_row=(target_row_cell is not None)
+
+                source_idx=source_row_cell.row - source_c[0][0].row if source_row_cell is not None else source_col_cell.column  - source_c[0][0].column if source_col_cell is not None else None
+                target_idx=target_row_cell.row - target_c[0][0].row if target_row_cell is not None else target_col_cell.column  - target_c[0][0].column if target_col_cell is not None else None
+
+                assert source_idx is not None and target_idx is not None, \
+                    "%s: If a row/column is specified for the source, it must also be specified for the target, and vice-versa" % self.source.name
+
+                if self.align:
+                    align_vectors(
+                        source=source_c,
+                        source_in_row=source_in_row,
+                        source_idx=source_idx,
+                        target=target_c,
+                        target_in_row=target_in_row,
+                        target_idx=target_idx,
+                    )
+                else:
+                    replace_vector(
+                        source=source_c,
+                        source_in_row=source_in_row,
+                        source_idx=source_idx,
+                        target=target_c,
+                        target_in_row=target_in_row,
+                        target_idx=target_idx,
+                        target_reference=self.target.reference,
+                        expand=self.expand
+                    )
         else:
             # Update/replace a single cell
             copy_value(source_c[0][0], target_c[0][0])
