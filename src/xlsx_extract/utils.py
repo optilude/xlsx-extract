@@ -70,6 +70,59 @@ def copy_value(source : Cell, target : Cell):
     """
     target.value = source.value
 
+def update_reference(worksheet : Worksheet, reference : str, table : Tuple[Tuple[Cell]]):
+    """Update a named reference or table to point to the table.
+    """
+
+def resize_table(table : Tuple[Tuple[Cell]], rows : int, cols : int, reference : str = None) -> Tuple[Tuple[Cell]]:
+    """Add or remove rows or columns at the end of of `table` so that it has the dimensions
+    `rows` x `cols`. If `reference` is a named table or named table, update it in the parent
+    workshet/workbook to reflect the new dimensions. Return new table with the correct
+    dimensions.
+    """
+
+    assert len(table) > 0 and len(table[0]) > 0, \
+        "Cannot resize an empty range"
+    
+    rows_delta = rows - len(table)
+    cols_delta = cols - len(table[0])
+
+    first_cell = table[0][0]
+    last_cell = table[-1][-1]
+
+    sheet = first_cell.parent
+
+    # Add new rows to the bottom
+    if rows_delta > 0:
+        sheet.insert_rows(last_cell.row + 1, rows_delta)
+    
+    # Remove rows from the bottom
+    if rows_delta < 0:
+        sheet.delete_rows(first_cell.row + rows, -rows_delta)
+    
+    # Add new columns to the end
+    if cols_delta > 0:
+        sheet.insert_cols(last_cell.column + 1, cols_delta)
+    
+    # Remove columns from the top
+    if cols_delta < 0:
+        sheet.delete_cols(first_cell.column + cols, -cols_delta)
+    
+    new_table = tuple(
+        sheet.iter_rows(
+            min_row=first_cell.row,
+            min_col=first_cell.column,
+            max_row=first_cell.row + (rows - 1),
+            max_col=first_cell.column + (cols - 1)
+        )
+    )
+
+    if reference is not None and (rows_delta != 0 or cols_delta != 0):
+        update_reference(sheet, reference, new_table)
+    
+    return new_table
+
+
 def update_vector(
     source : Tuple[Tuple[Cell]],
     target : Tuple[Tuple[Cell]],

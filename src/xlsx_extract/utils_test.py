@@ -64,6 +64,9 @@ def test_copy_value():
 
     copy_value(c1, c2)
 
+    c1 = ws.cell(row=3, column=2)
+    c2 = ws.cell(row=4, column=6)
+    
     assert c1.value == "Date"
     assert c2.value == "Date"
 
