@@ -10,6 +10,7 @@ from .utils import (
     resize_table,
     triangulate_cell,
     copy_value,
+    update_table
 )
 
 from .range import Range
@@ -81,207 +82,288 @@ class TestResizeTable:
         ws = wb['Report 1']
 
         # Full table: 5 rows by 4  columns
-        full_table = tuple(ws.iter_rows(min_row=5, min_col=2, max_row=9, max_col=6))
-
-        assert len(full_table) == 5
-        assert [c.value for c in full_table[0]] == [None, "Jan", "Feb", "Mar", "Apr"]
-        assert [c.value for c in full_table[1]] == ["Alpha", 1.5, 6, 11, 4.6]
-        assert [c.value for c in full_table[2]] == ["Beta", 2, 7, 12, 4.7]
-        assert [c.value for c in full_table[3]] == ["Delta", 2.5, 8, 13, 4.8]
-        assert [c.value for c in full_table[4]] == ["Gamma", 3, 9, 14, 4.9]
+        assert Range(ws['B5:F9']).get_values() == (
+            (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+            ('Alpha', 1.5, 6, 11, 4.6,),
+            ('Beta', 2, 7, 12, 4.7,),
+            ('Delta', 2.5, 8, 13, 4.8,),
+            ('Gamma', 3, 9, 14, 4.9,),
+        )
 
         # Small table: 3 rows by 2 columns
-        table = tuple(ws.iter_rows(min_row=5, min_col=3, max_row=7, max_col=4))
-
-        assert len(table) == 3
-        assert [c.value for c in table[0]] == ["Jan", "Feb"]
-        assert [c.value for c in table[1]] == [1.5, 6]
-        assert [c.value for c in table[2]] == [2, 7]
-
-        return ws, Range(table)
+        table = Range(ws['C5:D7'])
+        assert table.get_values() == (
+            ('Jan', 'Feb',),
+            (1.5, 6,),
+            (2, 7,),
+        )
+        
+        return ws, table
 
     def test_add_rows(self):
         ws, table = self.get_table()
 
         # Resize small table: add two rows
-        new_table = resize_table(table, rows=5, cols=2).cells
+        new_table = resize_table(table, rows=5, cols=2)
+        
+        assert new_table.get_values() == (
+            ('Jan', 'Feb',),
+            (1.5, 6,),
+            (2, 7,),
+            (None, None,),
+            (None, None,),
+        )
 
-        # New table
-        assert len(new_table) == 5
-        assert [c.value for c in new_table[0]] == ["Jan", "Feb"]
-        assert [c.value for c in new_table[1]] == [1.5, 6]
-        assert [c.value for c in new_table[2]] == [2, 7]
-        assert [c.value for c in new_table[3]] == [None, None]
-        assert [c.value for c in new_table[4]] == [None, None]
-
-        full_table = tuple(ws.iter_rows(min_row=5, min_col=2, max_row=11, max_col=6))
-
-        assert len(full_table) == 7
-        assert [c.value for c in full_table[0]] == [None, "Jan", "Feb", "Mar", "Apr"]
-        assert [c.value for c in full_table[1]] == ["Alpha", 1.5, 6, 11, 4.6]
-        assert [c.value for c in full_table[2]] == ["Beta", 2, 7, 12, 4.7]
-        assert [c.value for c in full_table[3]] == [None, None, None, None, None]
-        assert [c.value for c in full_table[4]] == [None, None, None, None, None]
-        assert [c.value for c in full_table[5]] == ["Delta", 2.5, 8, 13, 4.8]
-        assert [c.value for c in full_table[6]] == ["Gamma", 3, 9, 14, 4.9]
+        assert Range(ws['B5:F11']).get_values() == (
+            (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+            ('Alpha', 1.5, 6, 11, 4.6,),
+            ('Beta', 2, 7, 12, 4.7,),
+            (None, None, None, None, None,),
+            (None, None, None, None, None,),
+            ('Delta', 2.5, 8, 13, 4.8,),
+            ('Gamma', 3, 9, 14, 4.9,),
+        )
     
     def test_remove_rows(self):
         ws, table = self.get_table()
 
         # Resize small table: remove one row
-        new_table = resize_table(table, rows=2, cols=2).cells
+        new_table = resize_table(table, rows=2, cols=2)
 
-        # New table
-        assert len(new_table) == 2
-        assert [c.value for c in new_table[0]] == ["Jan", "Feb"]
-        assert [c.value for c in new_table[1]] == [1.5, 6]
+        assert new_table.get_values() == (
+            ('Jan', 'Feb',),
+            (1.5, 6,),
+        )
 
-        full_table = tuple(ws.iter_rows(min_row=5, min_col=2, max_row=8, max_col=6))
-
-        assert len(full_table) == 4
-        assert [c.value for c in full_table[0]] == [None, "Jan", "Feb", "Mar", "Apr"]
-        assert [c.value for c in full_table[1]] == ["Alpha", 1.5, 6, 11, 4.6]
-        assert [c.value for c in full_table[2]] == ["Delta", 2.5, 8, 13, 4.8]
-        assert [c.value for c in full_table[3]] == ["Gamma", 3, 9, 14, 4.9]
+        assert Range(ws['B5:F8']).get_values() == (
+            (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+            ('Alpha', 1.5, 6, 11, 4.6,),
+            ('Delta', 2.5, 8, 13, 4.8,),
+            ('Gamma', 3, 9, 14, 4.9,),
+        )
     
     def test_add_cols(self):
         ws, table = self.get_table()
 
         # Resize small table: add two columns
-        new_table = resize_table(table, rows=3, cols=4).cells
+        new_table = resize_table(table, rows=3, cols=4)
 
-        # New table
-        assert len(new_table) == 3
-        assert [c.value for c in new_table[0]] == ["Jan", "Feb", None, None]
-        assert [c.value for c in new_table[1]] == [1.5, 6, None, None]
-        assert [c.value for c in new_table[2]] == [2, 7, None, None]
+        assert new_table.get_values() == (
+            ('Jan', 'Feb', None, None,),
+            (1.5, 6, None, None,),
+            (2, 7, None, None,),
+        )
 
-        full_table = tuple(ws.iter_rows(min_row=5, min_col=2, max_row=9, max_col=8))
-
-        assert len(full_table) == 5
-        assert [c.value for c in full_table[0]] == [None, "Jan", "Feb", None, None, "Mar", "Apr"]
-        assert [c.value for c in full_table[1]] == ["Alpha", 1.5, 6, None, None, 11, 4.6]
-        assert [c.value for c in full_table[2]] == ["Beta", 2, 7, None, None, 12, 4.7]
-        assert [c.value for c in full_table[3]] == ["Delta", 2.5, 8, None, None, 13, 4.8]
-        assert [c.value for c in full_table[4]] == ["Gamma", 3, 9, None, None, 14, 4.9]
+        assert Range(ws['B5:H9']).get_values() == (
+            (None, 'Jan', 'Feb', None, None, 'Mar', 'Apr',),
+            ('Alpha', 1.5, 6, None, None, 11, 4.6,),
+            ('Beta', 2, 7, None, None, 12, 4.7,),
+            ('Delta', 2.5, 8, None, None, 13, 4.8,),
+            ('Gamma', 3, 9, None, None, 14, 4.9,),
+        )
     
     def test_remove_cols(self):
         ws, table = self.get_table()
 
         # Resize small table: remove one column
-        new_table = resize_table(table, rows=3, cols=1).cells
+        new_table = resize_table(table, rows=3, cols=1)
 
-        # New table
-        assert len(new_table) == 3
-        assert [c.value for c in new_table[0]] == ["Jan"]
-        assert [c.value for c in new_table[1]] == [1.5]
-        assert [c.value for c in new_table[2]] == [2]
+        assert new_table.get_values() == (
+            ('Jan',),
+            (1.5,),
+            (2,),
+        )
 
-        full_table = tuple(ws.iter_rows(min_row=5, min_col=2, max_row=9, max_col=5))
-
-        assert len(full_table) == 5
-        assert [c.value for c in full_table[0]] == [None, "Jan", "Mar", "Apr"]
-        assert [c.value for c in full_table[1]] == ["Alpha", 1.5, 11, 4.6]
-        assert [c.value for c in full_table[2]] == ["Beta", 2, 12, 4.7]
-        assert [c.value for c in full_table[3]] == ["Delta", 2.5, 13, 4.8]
-        assert [c.value for c in full_table[4]] == ["Gamma", 3, 14, 4.9]
+        assert Range(ws['B5:E9']).get_values() == (
+            (None, 'Jan', 'Mar', 'Apr',),
+            ('Alpha', 1.5, 11, 4.6,),
+            ('Beta', 2, 12, 4.7,),
+            ('Delta', 2.5, 13, 4.8,),
+            ('Gamma', 3, 14, 4.9,),
+        )
     
     def test_change_both_dimensions(self):
         ws, table = self.get_table()
         
         # Remove one row, add two columns
-        new_table = resize_table(table, rows=2, cols=4).cells
+        new_table = resize_table(table, rows=2, cols=4)
 
-        assert len(new_table) == 2
-        assert [c.value for c in new_table[0]] == ["Jan", "Feb", None, None]
-        assert [c.value for c in new_table[1]] == [1.5, 6, None, None]
+        assert new_table.get_values() == (
+            ('Jan', 'Feb', None, None,),
+            (1.5, 6, None, None,),
+        )
 
-        full_table = tuple(ws.iter_rows(min_row=5, min_col=2, max_row=8, max_col=8))
-
-        assert len(full_table) == 4
-        assert [c.value for c in full_table[0]] == [None, "Jan", "Feb", None, None, "Mar", "Apr"]
-        assert [c.value for c in full_table[1]] == ["Alpha", 1.5, 6, None, None, 11, 4.6]
-        assert [c.value for c in full_table[2]] == ["Delta", 2.5, 8, None, None, 13, 4.8]
-        assert [c.value for c in full_table[3]] == ["Gamma", 3, 9, None, None, 14, 4.9]
+        assert Range(ws['B5:H8']).get_values() == (
+            (None, 'Jan', 'Feb', None, None, 'Mar', 'Apr',),
+            ('Alpha', 1.5, 6, None, None, 11, 4.6,),
+            ('Delta', 2.5, 8, None, None, 13, 4.8,),
+            ('Gamma', 3, 9, None, None, 14, 4.9,),
+        )
     
     def test_resize_defined_name_table(self):
         wb = get_test_workbook()
 
-        defined_name = get_defined_name(wb, None, "PROFIT_RANGE")
-        ref = defined_name.attr_text
+        defined_name = get_defined_name(wb, None, "PROFIT_RANGE")        
+        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(defined_name.attr_text)
+        cells = tuple(wb[sheet_name].iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
+        table = Range(cells, defined_name=defined_name)
 
-        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(ref)
-        table = tuple(wb[sheet_name].iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
-
-        assert len(table) == 5
-        assert [c.value for c in table[0]] == [None, 'Profit', None, 'Loss', None]
-        assert [c.value for c in table[1]] == [None, '£', 'Plan', '£', 'Plan']
-        assert [c.value for c in table[2]] == ['Alpha', 100, 100, 50, 20]
-        assert [c.value for c in table[3]] == ['Beta', 200, 150, 50, 20]
-        assert [c.value for c in table[4]] == ['Delta', 300, 350, 50, 20]
+        assert table.get_values() == (
+            (None, 'Profit', None, 'Loss', None,),
+            (None, '£',	'Plan', '£', 'Plan',),
+            ('Alpha', 100, 100, 50, 20,),
+            ('Beta', 200, 150, 50, 20,),
+            ('Delta', 300, 350, 50, 20,),
+        )
 
         # add two columns, remove one row
-        new_table = resize_table(Range(table, defined_name=defined_name), rows=4, cols=7).cells
+        new_table = resize_table(table, rows=4, cols=7)
 
-        assert len(new_table) == 4
-        assert [c.value for c in new_table[0]] == [None, 'Profit', None, 'Loss', None, None, None]
-        assert [c.value for c in new_table[1]] == [None, '£', 'Plan', '£', 'Plan', None, None]
-        assert [c.value for c in new_table[2]] == ['Alpha', 100, 100, 50, 20, None, None]
-        assert [c.value for c in new_table[3]] == ['Beta', 200, 150, 50, 20, None, None]
+        assert new_table.get_values() == (
+            (None, 'Profit', None, 'Loss', None, None, None,),
+            (None, '£',	'Plan', '£', 'Plan', None, None,),
+            ('Alpha', 100, 100, 50, 20, None, None,),
+            ('Beta', 200, 150, 50, 20, None, None,),
+        )
 
         # check that the named range now resolves to the new table
-        defined_name = get_defined_name(wb, None, "PROFIT_RANGE")
-        ref = defined_name.attr_text
+        defined_name = get_defined_name(wb, None, "PROFIT_RANGE")        
+        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(defined_name.attr_text)
+        cells = tuple(wb[sheet_name].iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
+        confirm_table = Range(cells, defined_name=defined_name)
 
-        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(ref)
-        ref_table = tuple(wb[sheet_name].iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
-
-        assert len(ref_table) == 4
-        assert [c.value for c in ref_table[0]] == [None, 'Profit', None, 'Loss', None, None, None]
-        assert [c.value for c in ref_table[1]] == [None, '£', 'Plan', '£', 'Plan', None, None]
-        assert [c.value for c in ref_table[2]] == ['Alpha', 100, 100, 50, 20, None, None]
-        assert [c.value for c in ref_table[3]] == ['Beta', 200, 150, 50, 20, None, None]
+        assert confirm_table.get_values() == (
+            (None, 'Profit', None, 'Loss', None, None, None,),
+            (None, '£',	'Plan', '£', 'Plan', None, None,),
+            ('Alpha', 100, 100, 50, 20, None, None,),
+            ('Beta', 200, 150, 50, 20, None, None,),
+        )
     
     def test_resize_named_table(self):
         wb = get_test_workbook()
         ws = wb['Report 2']
-
+        
         named_table = get_named_table(ws, 'RangleTable')
-        ref = add_sheet_to_reference(ws, named_table.ref)
+        table = Range(ws[named_table.ref], named_table=named_table)
 
-        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(ref)
-        table = tuple(wb[sheet_name].iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
-
-        assert len(table) == 4
-        assert [c.value for c in table[0]] == ['Name', 'Date', 'Range', 'Price']
-        assert [c.value for c in table[1]] == ['Bill', datetime.datetime(2021, 1, 1), 9, 15]
-        assert [c.value for c in table[2]] == ['Bob', datetime.datetime(2021, 3, 2), 14, 18]
-        assert [c.value for c in table[3]] == ['Joan', datetime.datetime(2021, 6, 5), 13, 99]
+        assert table.get_values() == (
+            ('Name', 'Date', 'Range', 'Price',),
+            ('Bill', datetime.datetime(2021, 1, 1), 9, 15,),
+            ('Bob', datetime.datetime(2021, 3, 2), 14, 18,),
+            ('Joan', datetime.datetime(2021, 6, 5), 13, 99,),
+        )
 
         # Remove a column, add two rows
 
-        new_table = resize_table(Range(table, named_table=named_table), rows=6, cols=3).cells
+        new_table = resize_table(table, rows=6, cols=3)
 
-        assert len(new_table) == 6
-        assert [c.value for c in new_table[0]] == ['Name', 'Date', 'Range']
-        assert [c.value for c in new_table[1]] == ['Bill', datetime.datetime(2021, 1, 1), 9]
-        assert [c.value for c in new_table[2]] == ['Bob', datetime.datetime(2021, 3, 2), 14]
-        assert [c.value for c in new_table[3]] == ['Joan', datetime.datetime(2021, 6, 5), 13]
-        assert [c.value for c in new_table[4]] == [None, None, None]
-        assert [c.value for c in new_table[5]] == [None, None, None]
+        assert new_table.get_values() == (
+            ('Name', 'Date', 'Range',),
+            ('Bill', datetime.datetime(2021, 1, 1), 9,),
+            ('Bob', datetime.datetime(2021, 3, 2), 14,),
+            ('Joan', datetime.datetime(2021, 6, 5), 13,),
+            (None, None, None,),
+            (None, None, None,),
+        )
 
         # Check the named reference was updated
 
         named_table = get_named_table(ws, 'RangleTable')
-        ref = add_sheet_to_reference(ws, named_table.ref)
+        confirm_table = Range(ws[named_table.ref], named_table=named_table)
 
-        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(ref)
-        ref_table = tuple(wb[sheet_name].iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
+        assert confirm_table.get_values() == (
+            ('Name', 'Date', 'Range',),
+            ('Bill', datetime.datetime(2021, 1, 1), 9,),
+            ('Bob', datetime.datetime(2021, 3, 2), 14,),
+            ('Joan', datetime.datetime(2021, 6, 5), 13,),
+            (None, None, None,),
+            (None, None, None,),
+        )
 
-        assert len(ref_table) == 6
-        assert [c.value for c in ref_table[0]] == ['Name', 'Date', 'Range']
-        assert [c.value for c in ref_table[1]] == ['Bill', datetime.datetime(2021, 1, 1), 9]
-        assert [c.value for c in ref_table[2]] == ['Bob', datetime.datetime(2021, 3, 2), 14]
-        assert [c.value for c in ref_table[3]] == ['Joan', datetime.datetime(2021, 6, 5), 13]
-        assert [c.value for c in ref_table[4]] == [None, None, None]
-        assert [c.value for c in ref_table[5]] == [None, None, None]
+def test_update_table_without_expanding():
+    source_wb = get_test_workbook()
+    target_wb = get_test_workbook('target.xlsx')
+
+    source = Range(source_wb['Report 1']['B5:F9'])
+    target = Range(target_wb['Summary']['B7:E9'])
+
+    assert source.get_values() == (
+        (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+        ('Alpha', 1.5, 6, 11, 4.6,),
+        ('Beta', 2, 7, 12, 4.7,),
+        ('Delta', 2.5, 8, 13, 4.8,),
+        ('Gamma', 3, 9, 14, 4.9,),
+    )
+
+    assert target.get_values() == (
+        (None, 'Alpha', 'Delta', 'Beta',),
+        ('Profit', None, None, None,),
+        ('Loss', None, None, None,),
+    )
+
+    assert target_wb['Summary']['B11'].value == "Area"
+
+    new_target = update_table(source, target, False)
+
+    assert new_target.get_values() == (
+        (None, 'Jan', 'Feb', 'Mar',),
+        ('Alpha', 1.5, 6, 11,),
+        ('Beta', 2, 7, 12,),
+    )
+
+    confirm_target = Range(target_wb['Summary']['B7:E9'])
+
+    assert confirm_target.get_values() == (
+        (None, 'Jan', 'Feb', 'Mar',),
+        ('Alpha', 1.5, 6, 11,),
+        ('Beta', 2, 7, 12,),
+    )
+
+    assert target_wb['Summary']['B11'].value == "Area"
+
+def test_update_table_and_expand():
+    source_wb = get_test_workbook()
+    target_wb = get_test_workbook('target.xlsx')
+
+    source = Range(source_wb['Report 1']['B5:F9'])
+    target = Range(target_wb['Summary']['B7:E9'])
+
+    assert source.get_values() == (
+        (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+        ('Alpha', 1.5, 6, 11, 4.6,),
+        ('Beta', 2, 7, 12, 4.7,),
+        ('Delta', 2.5, 8, 13, 4.8,),
+        ('Gamma', 3, 9, 14, 4.9,),
+    )
+
+    assert target.get_values() == (
+        (None, 'Alpha', 'Delta', 'Beta',),
+        ('Profit', None, None, None,),
+        ('Loss', None, None, None,),
+    )
+
+    # Will be pushed down
+    assert target_wb['Summary']['B11'].value == "Area"
+
+    new_target = update_table(source, target, True)
+
+    assert new_target.get_values() == (
+        (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+        ('Alpha', 1.5, 6, 11, 4.6,),
+        ('Beta', 2, 7, 12, 4.7,),
+        ('Delta', 2.5, 8, 13, 4.8,),
+        ('Gamma', 3, 9, 14, 4.9,),
+    )
+
+    confirm_target = Range(target_wb['Summary']['B7:F11'])
+
+    assert confirm_target.get_values() == (
+        (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+        ('Alpha', 1.5, 6, 11, 4.6,),
+        ('Beta', 2, 7, 12, 4.7,),
+        ('Delta', 2.5, 8, 13, 4.8,),
+        ('Gamma', 3, 9, 14, 4.9,),
+    )
+
+    # Has been pushed down
+    assert target_wb['Summary']['B13'].value == "Area"

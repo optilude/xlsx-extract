@@ -338,15 +338,10 @@ class RangeMatch(Match):
         ):
             return (None, None,)
         
+        cells = start_cell_range.sheet["%s:%s" % (start_cell_range.cell.coordinate, end_cell_range.cell.coordinate,)]
+
         return (
-            Range(
-                tuple(start_cell_range.sheet.iter_rows(
-                    min_row=start_cell_range.cell.row,
-                    min_col=start_cell_range.cell.column,
-                    max_row=end_cell_range.cell.row,
-                    max_col=end_cell_range.cell.column
-                ))
-            ),
+            Range(cells),
             start_cell_match,
         )
     

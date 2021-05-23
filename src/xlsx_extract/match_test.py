@@ -334,9 +334,8 @@ class TestCellMatch:
         m = match.CellMatch(name="Test", reference="'Report 1'!B3")
         
         v, s = m.match(wb)
-        if v is not None: v = v.cell
 
-        assert v.value == "Date"
+        assert v.cell.value == "Date"
         assert s is None
     
     def test_find_by_reference_not_found(self):
@@ -347,8 +346,7 @@ class TestCellMatch:
             reference="notfound")
         
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-
+        
         assert v is None
         assert s is None
 
@@ -361,9 +359,8 @@ class TestCellMatch:
         )
         
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-
-        assert v.value == "Date"
+        
+        assert v.cell.value == "Date"
         assert s is None
 
     def test_find_by_reference_cell_with_sheet(self):
@@ -375,9 +372,8 @@ class TestCellMatch:
         )
         
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-
-        assert v.value == "Date"
+        
+        assert v.cell.value == "Date"
         assert s is None
 
     def test_find_by_reference_range(self):
@@ -385,7 +381,6 @@ class TestCellMatch:
         m = match.CellMatch(name="Test", reference="'Report 1'!A3:B3")
         
         v, s = m.match(wb)
-        if v is not None: v = v.cell
 
         assert v is None
         assert s is None
@@ -394,9 +389,8 @@ class TestCellMatch:
         wb = get_test_workbook()
         m = match.CellMatch(name="Test", reference="DATE_CELL")
         v, s = m.match(wb)
-        if v is not None: v = v.cell
 
-        assert v.value == datetime.datetime(2021, 5, 1, 0, 0)
+        assert v.cell.value == datetime.datetime(2021, 5, 1, 0, 0)
         assert s is None
     
     def test_find_by_reference_named_range(self):
@@ -404,7 +398,6 @@ class TestCellMatch:
         m = match.CellMatch(name="Test", reference="PROFIT_RANGE")
         
         v, s = m.match(wb)
-        if v is not None: v = v.cell
 
         assert v is None
         assert s is None
@@ -418,7 +411,6 @@ class TestCellMatch:
         )
         
         v, s = m.match(wb)
-        if v is not None: v = v.cell
 
         assert v is None
         assert s is None
@@ -432,9 +424,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, "Date")
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'B3'
-        assert v.value == "Date"
+        assert v.cell.coordinate == 'B3'
+        assert v.cell.value == "Date"
         assert s == "Date"
 
         m = match.CellMatch(name="Test",
@@ -442,7 +433,6 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, "notfound")
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s is None
 
@@ -455,9 +445,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.REGEX, "^Da(.+)")
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'B3'
-        assert v.value == "Date"
+        assert v.cell.coordinate == 'B3'
+        assert v.cell.value == "Date"
         assert s == "te"
 
         m = match.CellMatch(name="Test",
@@ -465,7 +454,6 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.REGEX, "^Da$")
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s is None
 
@@ -478,9 +466,9 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EMPTY)
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'A1'
-        assert v.value is None
+
+        assert v.cell.coordinate == 'A1'
+        assert v.cell.value is None
         assert s == ""
 
     def test_find_by_value_empty_bounded(self):
@@ -494,9 +482,9 @@ class TestCellMatch:
             min_col=2
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'D3'
-        assert v.value is None
+        
+        assert v.cell.coordinate == 'D3'
+        assert v.cell.value is None
         assert s == ""
 
     def test_find_by_value_not_empty(self):
@@ -508,9 +496,9 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.NOT_EMPTY)
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'B3'
-        assert v.value == "Date"
+        
+        assert v.cell.coordinate == 'B3'
+        assert v.cell.value == "Date"
         assert s == "Date"
 
     def test_find_by_value_not_empty_bounded(self):
@@ -524,9 +512,9 @@ class TestCellMatch:
             min_col=2
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C5'
-        assert v.value == "Jan"
+        
+        assert v.cell.coordinate == 'C5'
+        assert v.cell.value == "Jan"
         assert s == "Jan"
 
     def test_find_by_value_numeric(self):
@@ -538,9 +526,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER, 6)
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'E6'
-        assert v.value == 11
+        assert v.cell.coordinate == 'E6'
+        assert v.cell.value == 11
         assert s == 11
 
         m = match.CellMatch(
@@ -549,9 +536,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER_EQUAL, 6)
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'D6'
-        assert v.value == 6
+        assert v.cell.coordinate == 'D6'
+        assert v.cell.value == 6
         assert s == 6
 
         m = match.CellMatch(
@@ -560,9 +546,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, 4.6)
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'F6'
-        assert v.value == 4.6
+        assert v.cell.coordinate == 'F6'
+        assert v.cell.value == 4.6
         assert s == 4.6
 
         m = match.CellMatch(
@@ -571,7 +556,6 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS, 1.5)
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s == None
 
@@ -581,9 +565,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS, 2)
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C6'
-        assert v.value == 1.5
+        assert v.cell.coordinate == 'C6'
+        assert v.cell.value == 1.5
         assert s == 1.5
 
         m = match.CellMatch(
@@ -592,9 +575,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS_EQUAL, 1.5)
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C6'
-        assert v.value == 1.5
+        assert v.cell.coordinate == 'C6'
+        assert v.cell.value == 1.5
         assert s == 1.5
 
         m = match.CellMatch(
@@ -607,9 +589,8 @@ class TestCellMatch:
             max_col=6,
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'D6'
-        assert v.value == 6
+        assert v.cell.coordinate == 'D6'
+        assert v.cell.value == 6
         assert s == 6
 
     def test_find_by_value_datetime(self):
@@ -621,9 +602,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C3'
-        assert v.value == datetime.datetime(2021, 5, 1)
+        assert v.cell.coordinate == 'C3'
+        assert v.cell.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
 
         m = match.CellMatch(
@@ -632,7 +612,6 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s is None
 
@@ -642,9 +621,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER_EQUAL, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C3'
-        assert v.value == datetime.datetime(2021, 5, 1)
+        assert v.cell.coordinate == 'C3'
+        assert v.cell.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
 
         m = match.CellMatch(
@@ -653,7 +631,6 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s is None
 
@@ -663,9 +640,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS_EQUAL, datetime.datetime(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C3'
-        assert v.value == datetime.datetime(2021, 5, 1)
+        assert v.cell.coordinate == 'C3'
+        assert v.cell.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
     
     def test_find_by_value_datet(self):
@@ -677,9 +653,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.EQUAL, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C3'
-        assert v.value == datetime.datetime(2021, 5, 1)
+        assert v.cell.coordinate == 'C3'
+        assert v.cell.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
 
         m = match.CellMatch(
@@ -688,7 +663,6 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s is None
 
@@ -698,9 +672,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.GREATER_EQUAL, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C3'
-        assert v.value == datetime.datetime(2021, 5, 1)
+        assert v.cell.coordinate == 'C3'
+        assert v.cell.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
 
         m = match.CellMatch(
@@ -709,7 +682,6 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s is None
 
@@ -719,9 +691,8 @@ class TestCellMatch:
             value=match.Comparator(match.Operator.LESS_EQUAL, datetime.date(2021, 5, 1))
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C3'
-        assert v.value == datetime.datetime(2021, 5, 1)
+        assert v.cell.coordinate == 'C3'
+        assert v.cell.value == datetime.datetime(2021, 5, 1)
         assert s == datetime.datetime(2021, 5, 1)
 
     def test_offset(self):
@@ -734,9 +705,9 @@ class TestCellMatch:
             col_offset=1,
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C3'
-        assert v.value == datetime.datetime(2021, 5, 1)
+        
+        assert v.cell.coordinate == 'C3'
+        assert v.cell.value == datetime.datetime(2021, 5, 1)
         assert s == "Date"
 
         m = match.CellMatch(
@@ -747,9 +718,9 @@ class TestCellMatch:
             row_offset=2
         )
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'C5'
-        assert v.value == "Jan"
+        
+        assert v.cell.coordinate == 'C5'
+        assert v.cell.value == "Jan"
         assert s == "Date"
     
     def test_boundry_match(self):
@@ -762,9 +733,8 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'B3'
-        assert v.value == "Date"
+        assert v.cell.coordinate == 'B3'
+        assert v.cell.value == "Date"
         assert s == "Date"
 
         # not found within boundary
@@ -779,7 +749,6 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s is None
 
@@ -793,7 +762,6 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
-        if v is not None: v = v.cell
         assert v is None
         assert s is None
 
@@ -809,9 +777,8 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'B3'
-        assert v.value == "Date"
+        assert v.cell.coordinate == 'B3'
+        assert v.cell.value == "Date"
         assert s == "Date"
 
         # found within partial boundary
@@ -824,9 +791,8 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'B3'
-        assert v.value == "Date"
+        assert v.cell.coordinate == 'B3'
+        assert v.cell.value == "Date"
         assert s == "Date"
 
         m = match.CellMatch(
@@ -838,9 +804,8 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        assert v.coordinate == 'B3'
-        assert v.value == "Date"
+        assert v.cell.coordinate == 'B3'
+        assert v.cell.value == "Date"
         assert s == "Date"
 
         m = match.CellMatch(
@@ -851,10 +816,8 @@ class TestCellMatch:
         )
 
         v, s = m.match(wb)
-        if v is not None: v = v.cell
-        
-        assert v.coordinate == 'B3'
-        assert v.value == "Date"
+        assert v.cell.coordinate == 'B3'
+        assert v.cell.value == "Date"
         assert s == "Date"
 
 class TestRangeMatch:
@@ -865,9 +828,7 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 1
-        assert v.columns == 1
-        assert v.cells[0][0].value == "Date"
+        assert v.get_values() == (("Date",),)
         assert s is None
 
     def test_find_by_reference_cell_with_different_sheet(self):
@@ -880,9 +841,7 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 1
-        assert v.columns == 1
-        assert v.cells[0][0].value == "Date"
+        assert v.get_values() == (("Date",),)
         assert s is None
 
     def test_find_by_reference_cell_with_sheet(self):
@@ -895,9 +854,7 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 1
-        assert v.columns == 1
-        assert v.cells[0][0].value == "Date"
+        assert v.get_values() == (("Date",),)
         assert s is None
 
     def test_find_by_reference_range(self):
@@ -906,10 +863,7 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 1
-        assert v.columns == 2
-        assert v.cells[0][0].value is None
-        assert v.cells[0][1].value == "Date"
+        assert v.get_values() == ((None, "Date",),)
         assert s is None
     
     def test_find_by_reference_range_2d(self):
@@ -918,12 +872,10 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 2
-        assert v.columns == 2
-        assert v.cells[0][0].value == "Jan"
-        assert v.cells[0][1].value == "Feb"
-        assert v.cells[1][0].value == 1.5
-        assert v.cells[1][1].value == 6
+        assert v.get_values() == (
+            ("Jan", "Feb",),
+            (1.5, 6,),
+        )
         assert s is None
 
     def test_find_by_reference_named_cell(self):
@@ -931,9 +883,7 @@ class TestRangeMatch:
         m = match.RangeMatch(name="Test", reference="DATE_CELL")
         v, s = m.match(wb)
 
-        assert v.rows == 1
-        assert v.columns == 1
-        assert v.cells[0][0].value == datetime.datetime(2021, 5, 1, 0, 0)
+        assert v.get_values() == ((datetime.datetime(2021, 5, 1, 0, 0),),)
         assert s is None
     
     def test_find_by_reference_named_range(self):
@@ -942,12 +892,13 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 5
-        assert [c.value for c in v.cells[0]] == [None, 'Profit', None, 'Loss', None]
-        assert [c.value for c in v.cells[1]] == [None, '£', 'Plan', '£', 'Plan']
-        assert [c.value for c in v.cells[2]] == ['Alpha', 100, 100, 50, 20]
-        assert [c.value for c in v.cells[3]] == ['Beta', 200, 150, 50, 20]
-        assert [c.value for c in v.cells[4]] == ['Delta', 300, 350, 50, 20]
+        assert v.get_values() == (
+            (None, 'Profit', None, 'Loss', None,),
+            (None, '£',	'Plan', '£', 'Plan',),
+            ('Alpha', 100, 100, 50, 20,),
+            ('Beta', 200, 150, 50, 20,),
+            ('Delta', 300, 350, 50, 20,),
+        )
         assert s is None
 
     def test_find_by_reference_table(self):
@@ -960,11 +911,12 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 4
-        assert [c.value for c in v.cells[0]] == ['Name', 'Date', 'Range', 'Price']
-        assert [c.value for c in v.cells[1]] == ['Bill', datetime.datetime(2021, 1, 1), 9, 15]
-        assert [c.value for c in v.cells[2]] == ['Bob', datetime.datetime(2021, 3, 2), 14, 18]
-        assert [c.value for c in v.cells[3]] == ['Joan', datetime.datetime(2021, 6, 5), 13, 99]
+        assert v.get_values() == (
+            ('Name', 'Date', 'Range', 'Price',),
+            ('Bill', datetime.datetime(2021, 1, 1), 9, 15,),
+            ('Bob', datetime.datetime(2021, 3, 2), 14, 18,),
+            ('Joan', datetime.datetime(2021, 6, 5), 13, 99,),
+        )
         assert s is None
 
     def test_find_by_start_cell_not_found(self):
@@ -994,11 +946,12 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 4
-        assert [c.value for c in v.cells[0]] == [None, "Jan", "Feb"]
-        assert [c.value for c in v.cells[1]] == ["Alpha", 1.5, 6]
-        assert [c.value for c in v.cells[2]] == ["Beta", 2, 7]
-        assert [c.value for c in v.cells[3]] == ["Delta", 2.5, 8]
+        assert v.get_values() == (
+            (None, 'Jan', 'Feb',),
+            ('Alpha', 1.5, 6,),
+            ('Beta', 2, 7,),
+            ('Delta', 2.5, 8,),
+        )
         assert s is None
 
     def test_find_by_start_cell_and_size_with_match(self):
@@ -1017,11 +970,12 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 4
-        assert [c.value for c in v.cells[0]] == [None, "Jan", "Feb"]
-        assert [c.value for c in v.cells[1]] == ["Alpha", 1.5, 6]
-        assert [c.value for c in v.cells[2]] == ["Beta", 2, 7]
-        assert [c.value for c in v.cells[3]] == ["Delta", 2.5, 8]
+        assert v.get_values() == (
+            (None, 'Jan', 'Feb',),
+            ('Alpha', 1.5, 6,),
+            ('Beta', 2, 7,),
+            ('Delta', 2.5, 8,),
+        )
         assert s == "Jan"
     
     def test_find_by_start_cell_and_end_cell_with_match(self):
@@ -1042,11 +996,12 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 4
-        assert [c.value for c in v.cells[0]] == [None, "Jan", "Feb", "Mar"]
-        assert [c.value for c in v.cells[1]] == ["Alpha", 1.5, 6, 11]
-        assert [c.value for c in v.cells[2]] == ["Beta", 2, 7, 12]
-        assert [c.value for c in v.cells[3]] == ["Delta", 2.5, 8, 13]
+        assert v.get_values() == (
+            (None, 'Jan', 'Feb', 'Mar',),
+            ('Alpha', 1.5, 6, 11,),
+            ('Beta', 2, 7, 12,),
+            ('Delta', 2.5, 8, 13,),
+        )
         assert s == "Jan"
     
     def test_find_by_start_cell_and_end_cell_not_found(self):
@@ -1080,12 +1035,13 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 5
-        assert [c.value for c in v.cells[0]] == ["Jan", "Feb", "Mar", "Apr"]
-        assert [c.value for c in v.cells[1]] == [1.5, 6, 11, 4.6]
-        assert [c.value for c in v.cells[2]] == [2, 7, 12, 4.7]
-        assert [c.value for c in v.cells[3]] == [2.5, 8, 13, 4.8]
-        assert [c.value for c in v.cells[4]] == [3, 9, 14, 4.9]
+        assert v.get_values() == (
+            ('Jan', 'Feb', 'Mar', 'Apr',),
+            (1.5, 6, 11, 4.6,),
+            (2, 7, 12, 4.7,),
+            (2.5, 8, 13, 4.8,),
+            (3, 9, 14, 4.9,),
+        )
         assert s is None
     
     def test_find_by_start_cell_contiguous_first_blank(self):
@@ -1098,10 +1054,11 @@ class TestRangeMatch:
         
         v, s = m.match(wb)
 
-        assert v.rows == 5
-        assert [c.value for c in v.cells[0]] == [None, "Jan", "Feb", "Mar", "Apr"]
-        assert [c.value for c in v.cells[1]] == ["Alpha", 1.5, 6, 11, 4.6]
-        assert [c.value for c in v.cells[2]] == ["Beta", 2, 7, 12, 4.7]
-        assert [c.value for c in v.cells[3]] == ["Delta", 2.5, 8, 13, 4.8]
-        assert [c.value for c in v.cells[4]] == ["Gamma", 3, 9, 14, 4.9]
+        assert v.get_values() == (
+            (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+            ('Alpha', 1.5, 6, 11, 4.6,),
+            ('Beta', 2, 7, 12, 4.7,),
+            ('Delta', 2.5, 8, 13, 4.8,),
+            ('Gamma', 3, 9, 14, 4.9,),
+        )
         assert s is None

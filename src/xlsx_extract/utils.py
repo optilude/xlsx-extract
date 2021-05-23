@@ -123,8 +123,8 @@ def resize_table(table : Range, rows : int, cols : int) -> Range:
     
     return new_table
 
-def update_table(source : Range, target : Range, expand : bool = True):
-    """Update target table with source table
+def update_table(source : Range, target : Range, expand : bool = True) -> Range:
+    """Update target table with source table. Returns target (possibly expanded).
     """
 
     assert source is not None and not source.is_empty, \
@@ -139,6 +139,8 @@ def update_table(source : Range, target : Range, expand : bool = True):
     for source_row, target_row in zip(source.cells, target.cells):
         for source_cell, target_cell in zip(source_row, target_row):
             copy_value(source_cell, target_cell)
+    
+    return target
 
 def extract_vector(table : Range, in_row : bool, index : int) -> Tuple[Cell]:
     """Get a tuple of the cells in the row at `index` if `in_row`, or in the
