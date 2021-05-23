@@ -14,9 +14,9 @@ from .utils import (
     update_name
 )
 
-def get_test_workbook():
-    filename = os.path.join(os.path.dirname(__file__), 'test_data', 'source.xlsx')
-    return openpyxl.load_workbook(filename, data_only=True)
+def get_test_workbook(filename='source.xlsx', data_only=True):
+    filename = os.path.join(os.path.dirname(__file__), 'test_data', filename)
+    return openpyxl.load_workbook(filename, data_only=data_only)
 
 def test_get_globally_defined_name():
     wb = get_test_workbook()
