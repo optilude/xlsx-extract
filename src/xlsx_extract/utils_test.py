@@ -10,9 +10,9 @@ from .utils import (
     resize_table,
     triangulate_cell,
     copy_value,
-    get_reference_for_table,
-    update_name
 )
+
+from .range import Range
 
 def get_test_workbook(filename='source.xlsx', data_only=True):
     filename = os.path.join(os.path.dirname(__file__), 'test_data', filename)
@@ -74,38 +74,6 @@ def test_copy_value():
     assert c1.value == "Date"
     assert c2.value == "Date"
 
-def test_get_reference_for_table():
-    wb = get_test_workbook()
-    ws = wb['Report 1']
-
-    table = tuple(ws.iter_rows(min_row=2, min_col=3, max_row=5, max_col=6))
-    assert get_reference_for_table(table) == "'Report 1'!$C$2:$F$5"
-
-    table = tuple(ws.iter_rows(min_row=2, min_col=3, max_row=2, max_col=3))
-    assert get_reference_for_table(table) == "'Report 1'!$C$2"
-
-def test_update_name():
-    wb = get_test_workbook()
-    ws = wb['Report 2']
-
-    defined_name = get_defined_name(wb, ws, "PROFIT_RANGE")
-    assert defined_name.attr_text == "'Report 3'!$A$1:$E$5"
-
-    table = tuple(ws.iter_rows(min_row=2, min_col=3, max_row=5, max_col=6))
-    assert update_name(ws, "PROFIT_RANGE", table) == True
-    
-    defined_name = get_defined_name(wb, ws, "PROFIT_RANGE")
-    assert defined_name.attr_text == "'Report 2'!$C$2:$F$5"
-
-    assert update_name(ws, "NOT_FOUND", table) == False
-
-    named_table = get_named_table(ws, "RangleTable")
-    assert named_table.ref == "B10:E13"
-
-    assert update_name(ws, "RangleTable", table) == True
-    named_table = get_named_table(ws, "RangleTable")
-    assert named_table.ref == "C2:F5"
-
 class TestResizeTable:
 
     def get_table(self):
@@ -130,13 +98,13 @@ class TestResizeTable:
         assert [c.value for c in table[1]] == [1.5, 6]
         assert [c.value for c in table[2]] == [2, 7]
 
-        return ws, table
+        return ws, Range(table)
 
     def test_add_rows(self):
         ws, table = self.get_table()
 
         # Resize small table: add two rows
-        new_table = resize_table(table, rows=5, cols=2, reference=None)
+        new_table = resize_table(table, rows=5, cols=2).cells
 
         # New table
         assert len(new_table) == 5
@@ -161,7 +129,7 @@ class TestResizeTable:
         ws, table = self.get_table()
 
         # Resize small table: remove one row
-        new_table = resize_table(table, rows=2, cols=2, reference=None)
+        new_table = resize_table(table, rows=2, cols=2).cells
 
         # New table
         assert len(new_table) == 2
@@ -180,7 +148,7 @@ class TestResizeTable:
         ws, table = self.get_table()
 
         # Resize small table: add two columns
-        new_table = resize_table(table, rows=3, cols=4, reference=None)
+        new_table = resize_table(table, rows=3, cols=4).cells
 
         # New table
         assert len(new_table) == 3
@@ -201,7 +169,7 @@ class TestResizeTable:
         ws, table = self.get_table()
 
         # Resize small table: remove one column
-        new_table = resize_table(table, rows=3, cols=1, reference=None)
+        new_table = resize_table(table, rows=3, cols=1).cells
 
         # New table
         assert len(new_table) == 3
@@ -222,7 +190,7 @@ class TestResizeTable:
         ws, table = self.get_table()
         
         # Remove one row, add two columns
-        new_table = resize_table(table, rows=2, cols=4, reference=None)
+        new_table = resize_table(table, rows=2, cols=4).cells
 
         assert len(new_table) == 2
         assert [c.value for c in new_table[0]] == ["Jan", "Feb", None, None]
@@ -253,7 +221,7 @@ class TestResizeTable:
         assert [c.value for c in table[4]] == ['Delta', 300, 350, 50, 20]
 
         # add two columns, remove one row
-        new_table = resize_table(table, rows=4, cols=7, reference="PROFIT_RANGE")
+        new_table = resize_table(Range(table, defined_name=defined_name), rows=4, cols=7).cells
 
         assert len(new_table) == 4
         assert [c.value for c in new_table[0]] == [None, 'Profit', None, 'Loss', None, None, None]
@@ -292,7 +260,7 @@ class TestResizeTable:
 
         # Remove a column, add two rows
 
-        new_table = resize_table(table, rows=6, cols=3, reference="RangleTable")
+        new_table = resize_table(Range(table, named_table=named_table), rows=6, cols=3).cells
 
         assert len(new_table) == 6
         assert [c.value for c in new_table[0]] == ['Name', 'Date', 'Range']

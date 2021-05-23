@@ -6,11 +6,11 @@ from datetime import datetime, date, time
 from dataclasses import dataclass
 
 from openpyxl import Workbook
-from openpyxl.workbook.defined_name import DefinedName
-from openpyxl.worksheet.table import Table
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell import Cell
-from openpyxl.utils.cell import absolute_coordinate, quote_sheetname, range_to_tuple
+from openpyxl.utils.cell import range_to_tuple
+
+from .range import Range
 
 from .utils import (
     get_defined_name,
@@ -32,60 +32,7 @@ class Operator(Enum):
 
     REGEX = "regex"
 
-@dataclass
-class Range:
-    """One or multiple contiguous cells, possibly identified by a name,
-    in a tuple (rows) of tuples (columns).
-    """
 
-    cells : Tuple[Tuple[Cell]]
-    
-    defined_name : DefinedName = None
-    named_table : Table = None
-
-    def __post_init__(self):
-        assert not (self.defined_name is not None and self.named_table is not None), \
-            "A results range cannot have both a defined name and a table name"
-
-    @property
-    def is_empty(self):
-        return len(self.cells) == 0 or len(self.cells[0]) == 0
-
-    @property
-    def is_cell(self):
-        return not self.is_empty and len(self.cells) == 1 and len(self.cells[0]) == 1
-
-    @property
-    def cell(self):
-        return self.cells[0][0] if self.is_cell else None
-    
-    @property
-    def sheet(self):
-        return self.cells[0][0].parent if not self.is_empty else None
-    
-    @property
-    def workbook(self):
-        return self.cells[0][0].parent.parent if not self.is_empty else None
-
-    def get_reference(self, absolute=True, use_sheet=True, use_defined_name=True, use_named_table=True) -> str:
-        if self.is_empty:
-            return None
-        
-        if use_defined_name and self.defined_name is not None:
-            return self.defined_name.name
-
-        if use_named_table and self.named_table is not None:
-            return self.named_table.name
-        
-        prefix = "%s!" % quote_sheetname(self.sheet.title) if use_sheet else ""
-        start = absolute_coordinate(self.cells[0][0].coordinate) if absolute else self.cells[0][0].coordinate
-
-        if self.is_cell:
-            return prefix + start
-        
-        end = absolute_coordinate(self.cells[-1][-1].coordinate) if absolute else self.cells[-1][-1].coordinate
-        return prefix + start + ":" + end
-        
 @dataclass
 class Comparator:
     """Parameters to find a single cell
@@ -176,7 +123,7 @@ class Match:
     # Search by cell/range reference (name or coordinate)
     reference : str = None
 
-    def match(self, workbook : Workbook) -> Tuple[Tuple[Tuple[Cell]], Any]:
+    def match(self, workbook : Workbook) -> Tuple[Range, Any]:
         """Match current parameters in worksheet and return a tuple of
         `(matched cells, matched value)`.
         """
@@ -193,7 +140,7 @@ class Match:
                 return (ws, match)
         return (None, None)
 
-    def find_by_reference(self, workbook : Workbook, worksheet : Worksheet = None) -> Tuple[Tuple[Cell]]:
+    def find_by_reference(self, workbook : Workbook, worksheet : Worksheet = None) -> Range:
         """Find the cell or range matching `self.reference`. Always returns a
         tuple of tuples.
         """
@@ -201,11 +148,11 @@ class Match:
             return None
         
         defined_name = get_defined_name(workbook, worksheet, self.reference)
-        table = get_named_table(worksheet, self.reference)
+        named_table = get_named_table(worksheet, self.reference)
         
         ref = \
             defined_name.attr_text if defined_name is not None \
-            else table.ref if table is not None \
+            else named_table.ref if named_table is not None \
             else self.reference
 
         ref = add_sheet_to_reference(worksheet, ref)
@@ -218,14 +165,8 @@ class Match:
         
         sheet = workbook[sheet_name]
 
-        # Single cell
-        if r1 == r2 and c1 == c2:
-            return ((sheet.cell(r1, c1),),)
-        # Range
-        else:
-            return tuple(sheet.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
-
-    
+        cells = tuple(sheet.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
+        return Range(cells, defined_name=defined_name, named_table=named_table)
 
 @dataclass
 class CellMatch(Match):
@@ -258,7 +199,7 @@ class CellMatch(Match):
             # assert self.sheet is not None, "%s: Sheet is required if matching by value" % self.name
             assert self.reference is None, "%s: Cell value cannot be specified if cell value is given" % self.name
 
-    def match(self, workbook : Workbook) -> Tuple[Tuple[Tuple[Cell]], Any]:
+    def match(self, workbook : Workbook) -> Tuple[Range, Any]:
         """Match a single cell
         """
 
@@ -270,16 +211,22 @@ class CellMatch(Match):
         match = None
 
         if self.reference is not None:
-            cells = self.find_by_reference(workbook, worksheet)
-            if cells is not None and len(cells) == 1 and len(cells[0]) == 1:
-                cell = cells[0][0]
+            range = self.find_by_reference(workbook, worksheet)
+            if range is not None and range.is_cell:
+                cell = range.cell
         elif self.value is not None:
             cell, match = self.find_by_value(worksheet)
         
-        if cell is not None and (self.row_offset != 0 or self.col_offset != 0):
+        if cell is None:
+            return (None, None)
+
+        if self.row_offset != 0 or self.col_offset != 0:
             cell = cell.offset(self.row_offset, self.col_offset)
         
-        return (None, None) if cell is None else (((cell,),), match,)
+        return (
+            Range(((cell,),)),
+            match,
+        )
 
     def find_by_value(self, worksheet : Worksheet) -> Tuple[Cell, Any]:
         """Search the worksheet for a cell by value comparator, returning
@@ -351,7 +298,7 @@ class RangeMatch(Match):
             if self.rows is not None and self.cols is not None:
                 assert self.end_cell is None, "%s: An end cell cannot be specified if fixed row and column counts are given" % self.name
 
-    def match(self, workbook : Workbook) -> Tuple[Tuple[Tuple[Cell]], Any]:
+    def match(self, workbook : Workbook) -> Tuple[Range, Any]:
         """Match a range of cells
         """
 
@@ -359,88 +306,86 @@ class RangeMatch(Match):
         if self.sheet is not None:
             worksheet, _ = self.get_sheet(workbook)
 
-        cells = None
+        range = None
         match = None
 
         if self.reference is not None:
-            cells = self.find_by_reference(workbook, worksheet)
+            range = self.find_by_reference(workbook, worksheet)
         elif self.start_cell is not None:
             if self.end_cell is not None:
-                cells, match = self.find_by_end_cell(workbook)
+                range, match = self.find_by_end_cell(workbook)
             elif self.rows is not None and self.cols is not None:
-                cells, match = self.find_by_dimensions(workbook)
+                range, match = self.find_by_dimensions(workbook)
             else:
-                cells, match = self.find_by_contiguous_region(workbook)
+                range, match = self.find_by_contiguous_region(workbook)
         
-        return (cells, match)
+        return (range, match,)
 
 
-    def find_by_end_cell(self, workbook : Workbook) -> Tuple[Tuple[Tuple[Cell]], Any]:
+    def find_by_end_cell(self, workbook : Workbook) -> Tuple[Range, Any]:
         """Find range by `self.start_cell` and `self.end_cell`.
         """
         if self.start_cell is None or self.end_cell is None:
             return (None, None,)
 
-        start_cell, start_cell_match = self.start_cell.match(workbook)
-        end_cell, _ = self.end_cell.match(workbook)
+        start_cell_range, start_cell_match = self.start_cell.match(workbook)
+        end_cell_range, _ = self.end_cell.match(workbook)
         
-        if start_cell is None or len(start_cell) == 0 or end_cell is None or len(end_cell) == 0:
-            return (None, None,)
-        
-        start_cell = start_cell[0][0]
-        end_cell = end_cell[0][0]
-        
-        # If the cells came from sheets, we can't compare them
-        if start_cell.parent.title != end_cell.parent.title:
+        if (
+            (start_cell_range is None or not start_cell_range.is_cell) or
+            (end_cell_range is None or not end_cell_range.is_cell) or
+            (not start_cell_range.sheet is end_cell_range.sheet)
+        ):
             return (None, None,)
         
         return (
-            tuple(start_cell.parent.iter_rows(
-                min_row=start_cell.row,
-                min_col=start_cell.column,
-                max_row=end_cell.row,
-                max_col=end_cell.column
-            )),
+            Range(
+                tuple(start_cell_range.sheet.iter_rows(
+                    min_row=start_cell_range.cell.row,
+                    min_col=start_cell_range.cell.column,
+                    max_row=end_cell_range.cell.row,
+                    max_col=end_cell_range.cell.column
+                ))
+            ),
             start_cell_match,
         )
     
-    def find_by_dimensions(self, workbook : Workbook) -> Tuple[Tuple[Tuple[Cell]], Any]:
+    def find_by_dimensions(self, workbook : Workbook) -> Tuple[Range, Any]:
         """Find range by `self.start_cell`, `self.rows` and `self.cols`.
         """
         if self.start_cell is None or self.rows is None or self.cols is None:
-            return (None, None)
+            return (None, None,)
 
-        start_cell, start_cell_match = self.start_cell.match(workbook)
+        start_cell_range, start_cell_match = self.start_cell.match(workbook)
 
-        if start_cell is None or len(start_cell) == 0:
+        if start_cell_range is None or not start_cell_range.is_cell:
             return (None, None,)
         
-        start_cell = start_cell[0][0]
-
         return (
-            tuple(start_cell.parent.iter_rows(
-                min_row=start_cell.row,
-                min_col=start_cell.column,
-                max_row=start_cell.row + (self.rows - 1),
-                max_col=start_cell.column + (self.cols - 1)
-            )),
+            Range(
+                tuple(start_cell_range.sheet.iter_rows(
+                    min_row=start_cell_range.cell.row,
+                    min_col=start_cell_range.cell.column,
+                    max_row=start_cell_range.cell.row + (self.rows - 1),
+                    max_col=start_cell_range.cell.column + (self.cols - 1)
+                )),
+            ),
             start_cell_match,
         )
     
-    def find_by_contiguous_region(self, workbook : Workbook) -> Tuple[Tuple[Tuple[Cell]], Any]:
+    def find_by_contiguous_region(self, workbook : Workbook) -> Tuple[Range, Any]:
         """Find range contiguously from `self.start_cell`.
         """
         if self.start_cell is None:
             return (None, None,)
 
-        start_cell, start_cell_match = self.start_cell.match(workbook)
+        start_cell_range, start_cell_match = self.start_cell.match(workbook)
 
-        if start_cell is None or len(start_cell) == 0:
+        if start_cell_range is None or not start_cell_range.is_cell:
             return (None, None,)
         
-        start_cell = start_cell[0][0]
-
-        sheet = start_cell.parent
+        sheet = start_cell_range.sheet
+        start_cell = start_cell_range.cell
         rows = 1
         cols = 1
 
@@ -459,11 +404,13 @@ class RangeMatch(Match):
             rows += 1
 
         return (
-            tuple(start_cell.parent.iter_rows(
-                min_row=start_cell.row,
-                min_col=start_cell.column,
-                max_row=start_cell.row + (rows - 1),
-                max_col=start_cell.column + (cols - 1)
-            )),
+            Range(
+                tuple(sheet.iter_rows(
+                    min_row=start_cell.row,
+                    min_col=start_cell.column,
+                    max_row=start_cell.row + (rows - 1),
+                    max_col=start_cell.column + (cols - 1)
+                ))
+            ),
             start_cell_match
         )

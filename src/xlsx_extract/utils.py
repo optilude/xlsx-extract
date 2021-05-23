@@ -7,6 +7,8 @@ from openpyxl.worksheet.table import Table
 from openpyxl.cell import Cell
 from openpyxl.utils.cell import quote_sheetname, absolute_coordinate
 
+from .range import Range
+
 def get_defined_name(workbook : Workbook, worksheet : Worksheet, name : str) -> DefinedName:
     """Get a locally or globally defined name object
     """
@@ -70,141 +72,93 @@ def copy_value(source : Cell, target : Cell):
     """
     target.value = source.value
 
-def get_reference_for_table(table : Tuple[Tuple[Cell]]) -> str:
-    """Get an absolute cell range reference for the given table
-    """
-    assert len(table) > 0 and len(table[0]) > 0, \
-        "Cannot create a reference for an empty table"
-    
-    first_cell = table[0][0]
-    last_cell = table[-1][-1]
-
-    first_cell_coordinate = absolute_coordinate(first_cell.coordinate)
-    last_cell_coordinate = absolute_coordinate(last_cell.coordinate)
-
-    worksheet = first_cell.parent
-
-    if first_cell.coordinate == last_cell.coordinate:
-        return "%s!%s" % (quote_sheetname(worksheet.title), first_cell_coordinate)
-    else:
-        return "%s!%s:%s" % (quote_sheetname(worksheet.title), first_cell_coordinate, last_cell_coordinate)
-
-def update_name(worksheet : Worksheet, reference : str, table : Tuple[Tuple[Cell]]) -> bool:
-    """Update a named reference or table to point to the table.
-    """
-
-    assert len(table) > 0 and len(table[0]) > 0, \
-        "Cannot update name for an empty table"
-
-    workbook = worksheet.parent
-
-    defined_name = get_defined_name(workbook, worksheet, reference)
-    if defined_name is not None:
-        defined_name.attr_text = get_reference_for_table(table)
-        return True
-    
-    named_table = get_named_table(worksheet, reference)
-    if named_table is not None:
-        named_table.ref = "%s:%s" % (table[0][0].coordinate, table[-1][-1].coordinate)
-        return True
-    
-    return False
-
-def resize_table(table : Tuple[Tuple[Cell]], rows : int, cols : int, reference : str = None) -> Tuple[Tuple[Cell]]:
+def resize_table(table : Range, rows : int, cols : int) -> Range:
     """Add or remove rows or columns at the end of of `table` so that it has the dimensions
-    `rows` x `cols`. If `reference` is a named table or named table, update it in the parent
-    workshet/workbook to reflect the new dimensions. Return new table with the correct
-    dimensions.
+    `rows` x `cols`. Return new table with the correct dimensions.
     """
 
-    assert len(table) > 0 and len(table[0]) > 0, \
+    assert table is not None and not table.is_empty, \
         "Cannot resize an empty range"
     
+    rows_delta = rows - table.rows
+    cols_delta = cols - table.columns
+    
     # No change
-    if rows == len(table) and cols == len(table[0]):
+    if rows_delta == 0 and cols_delta == 0:
         return table
-
-    rows_delta = rows - len(table)
-    cols_delta = cols - len(table[0])
-
-    first_cell = table[0][0]
-    last_cell = table[-1][-1]
-
-    sheet = first_cell.parent
 
     # Add new rows to the bottom
     if rows_delta > 0:
-        sheet.insert_rows(last_cell.row + 1, rows_delta)
+        table.sheet.insert_rows(table.last_cell.row + 1, rows_delta)
     
     # Remove rows from the bottom
     if rows_delta < 0:
-        sheet.delete_rows(first_cell.row + rows, -rows_delta)
+        table.sheet.delete_rows(table.first_cell.row + rows, -rows_delta)
     
     # Add new columns to the end
     if cols_delta > 0:
-        sheet.insert_cols(last_cell.column + 1, cols_delta)
+        table.sheet.insert_cols(table.last_cell.column + 1, cols_delta)
     
     # Remove columns from the top
     if cols_delta < 0:
-        sheet.delete_cols(first_cell.column + cols, -cols_delta)
+        table.sheet.delete_cols(table.first_cell.column + cols, -cols_delta)
     
-    new_table = tuple(
-        sheet.iter_rows(
-            min_row=first_cell.row,
-            min_col=first_cell.column,
-            max_row=first_cell.row + (rows - 1),
-            max_col=first_cell.column + (cols - 1)
+    new_range = tuple(
+        table.sheet.iter_rows(
+            min_row=table.first_cell.row,
+            min_col=table.first_cell.column,
+            max_row=table.first_cell.row + (rows - 1),
+            max_col=table.first_cell.column + (cols - 1)
         )
     )
+    
+    new_table = Range(new_range, defined_name=table.defined_name, named_table=table.named_table)
 
-    if reference is not None and (rows_delta != 0 or cols_delta != 0):
-        update_name(sheet, reference, new_table)
+    # Update defined name or named table reference if required
+
+    if new_table.defined_name is not None:
+        new_table.defined_name.attr_text = new_table.get_reference(absolute=True, use_sheet=True, use_defined_name=False, use_named_table=False)
+    
+    if table.named_table is not None:
+        new_table.named_table.ref = new_table.get_reference(absolute=False, use_sheet=False, use_defined_name=False, use_named_table=False)
     
     return new_table
 
-def update_table(
-    source : Tuple[Tuple[Cell]],
-    target : Tuple[Tuple[Cell]],
-    target_reference : str,
-    expand : bool = True,
-):
+def update_table(source : Range, target : Range, expand : bool = True):
     """Update target table with source table
     """
 
-    assert len(target) > 0 and len(target[0]) > 0, \
-        "Cannot target an empty table (this is a bug - it should not happen)"
-    
-    assert len(source) > 0 and len(source[0]) > 0, \
+    assert source is not None and not source.is_empty, \
         "Cannot copy an empty table (this is a bug - it should not happen)"
+    
+    assert target is not None and not target.is_empty, \
+        "Cannot target an empty table (this is a bug - it should not happen)"
 
     if expand:
-        target = resize_table(target, len(source), len(source[0]), target_reference)
+        target = resize_table(target, source.rows, source.columns)
     
-    for source_row, target_row in zip(source, target):
+    for source_row, target_row in zip(source.columns, target.columns):
         for source_cell, target_cell in zip(source_row, target_row):
             copy_value(source_cell, target_cell)
 
-def extract_vector(table : Tuple[Tuple[Cell]], in_row : bool, index : int) -> Tuple[Cell]:
+def extract_vector(table : Range, in_row : bool, index : int) -> Tuple[Cell]:
     """Get a tuple of the cells in the row at `index` if `in_row`, or in the
     column at `index` if not `in_row`.
     """
-    return (table[index] if in_row else [c[index] for c in table])
+    return (table.columns[index] if in_row else [r[index] for r in table.columns])
 
 def align_vectors(
-    source : Tuple[Tuple[Cell]],
-    source_in_row : bool,
-    source_idx : int,
-    target : Tuple[Tuple[Cell]],
-    target_in_row : bool,
-    target_idx : int,
+    source : Range, source_in_row : bool, source_idx : int,
+    target : Range, target_in_row : bool, target_idx : int,
 ):
     """Replace a vector in `target` with a vector in `source` by matching
     labels in the first row/column of each.
     """
 
-    assert len(target) > 0 and len(target[0]) > 0, \
+    assert source is not None and not source.is_empty, \
+        "Cannot source from an empty table (this is a bug - it should not happen)"
+    assert target is not None and not target.is_empty, \
         "Cannot target an empty table (this is a bug - it should not happen)"
-
     assert source_idx is not None, \
         "One of source row and column index must be set (this is a bug - it should not happen)"
     assert target_idx is not None, \
@@ -235,21 +189,17 @@ def align_vectors(
 
 
 def replace_vector(
-    source : Tuple[Tuple[Cell]],
-    source_in_row : bool,
-    source_idx : int,
-    target : Tuple[Tuple[Cell]],
-    target_in_row : bool,
-    target_idx : int,
-    target_reference : str,
+    source : Range, source_in_row : bool, source_idx : int,
+    target : Range, target_in_row : bool, target_idx : int,
     expand : bool,
 ):
     """Replace a single row or column in target with a single row or column in source.
     """
 
-    assert len(target) > 0 and len(target[0]) > 0, \
+    assert source is not None and not source.is_empty, \
+        "Cannot source from an empty table (this is a bug - it should not happen)"
+    assert target is not None and not target.is_empty, \
         "Cannot target an empty table (this is a bug - it should not happen)"
-
     assert source_idx is not None, \
         "One of source row and column index must be set (this is a bug - it should not happen)"
     assert target_idx is not None, \
@@ -260,10 +210,10 @@ def replace_vector(
     target_vector = extract_vector(target, target_in_row, target_idx)
 
     if expand:
-        rows = len(source_vector) if not target_in_row else len(target)
-        cols = len(source_vector) if target_in_row else len(target[0])
+        rows = len(source_vector) if not target_in_row else target.rows
+        cols = len(source_vector) if target_in_row else target.columns
 
-        target = resize_table(target, rows, cols, target_reference)
+        target = resize_table(target, rows, cols)
         target_vector = extract_vector(target, target_in_row, target_idx)
 
     assert source_idx > 0 and source_idx < len(source_vector), \
