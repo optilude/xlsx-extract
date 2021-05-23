@@ -23,17 +23,17 @@ def locate_cell_in_range(workbook : Workbook, range_cells : Range, cell_match : 
     m.max_row = range_cells.last_cell.row
     m.max_col = range_cells.last_cell.column
 
-    cell, _ = m.match(workbook)
+    cell_range, _ = m.match(workbook)
 
     if (
-        cell is not None and (
-            cell.column < m.min_col or cell.column > m.max_col or 
-            cell.row < m.min_row or cell.row > m.max_row
+        cell_range is not None or not cell_range.is_cell or (
+            cell_range.cell.column < m.min_col or cell_range.cell.column > m.max_col or 
+            cell_range.cell.row < m.min_row or cell_range.cell.row > m.max_row
         )
     ):
         return None
 
-    return cell
+    return cell_range.cell
 
 @dataclass
 class Target:
@@ -174,18 +174,12 @@ class Target:
             "%s: Target cell range is empty (this is a bug - it should never happen)" % self.source.name
 
         # We also should have at most one of source_row and source_col set (to identify a vector)
-        assert not source_range.is_range or (
-            (source_row_cell is None and source_col_cell is None) or 
-            (source_row_cell is None and source_col_cell is not None) or
-            (source_row_cell is not None and source_col_cell is None)
-        ), "%s: Both source row and source column are set but cell has not been located (this is a bug - it should never happen)" % self.source.name
+        assert source_range.is_cell or not all(c is not None for c in (source_row_cell, source_col_cell,)), \
+            "%s: Both source row and source column are set but cell has not been located (this is a bug - it should never happen)" % self.source.name
         
         # And the same for target_row and target_col
-        assert not target_range.is_range or (
-            (target_row_cell is None and target_col_cell is None) or 
-            (target_row_cell is None and target_col_cell is not None) or
-            (target_row_cell is not None and target_col_cell is None)
-        ), "%s: Both target row and target column are set but cell has not been located (this is a bug - it should never happen)" % self.source.name
+        assert target_range.is_cell or not all(c is not None for c in (target_row_cell, target_col_cell,)), \
+            "%s: Both target row and target column are set but cell has not been located (this is a bug - it should never happen)" % self.source.name
 
         if source_range.is_range:
             # Update/replace an entire table
@@ -207,24 +201,9 @@ class Target:
                     "%s: If a row/column is specified for the source, it must also be specified for the target, and vice-versa" % self.source.name
 
                 if self.align:
-                    align_vectors(
-                        source=source_range,
-                        source_in_row=source_in_row,
-                        source_idx=source_idx,
-                        target=target_range,
-                        target_in_row=target_in_row,
-                        target_idx=target_idx,
-                    )
+                    align_vectors(source_range, source_in_row, source_idx, target_range, target_in_row, target_idx)
                 else:
-                    replace_vector(
-                        source=source_range,
-                        source_in_row=source_in_row,
-                        source_idx=source_idx,
-                        target=target_range,
-                        target_in_row=target_in_row,
-                        target_idx=target_idx,
-                        expand=self.expand
-                    )
+                    replace_vector(source_range, source_in_row, source_idx, target_range, target_in_row, target_idx, self.expand)
         else:
             # Update/replace a single cell
             copy_value(source_range.cell, target_range.cell)

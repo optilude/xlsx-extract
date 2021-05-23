@@ -2,10 +2,12 @@ from dataclasses import dataclass
 from typing import Any, Union, Tuple, Generator
 
 from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.table import Table
 from openpyxl.cell import Cell
 
 from openpyxl.utils.cell import absolute_coordinate, quote_sheetname
+from openpyxl.worksheet.worksheet import Worksheet
 
 @dataclass
 class Range:
@@ -23,43 +25,43 @@ class Range:
             "A results range cannot have both a defined name and a table name"
 
     @property
-    def is_empty(self):
+    def is_empty(self) -> bool:
         return len(self.cells) == 0 or len(self.cells[0]) == 0
 
     @property
-    def is_cell(self):
+    def is_cell(self) -> bool:
         return not self.is_empty and len(self.cells) == 1 and len(self.cells[0]) == 1
     
     @property
-    def is_range(self):
+    def is_range(self) -> bool:
         return not self.is_empty and (len(self.cells) > 1 or len(self.cells[0]) > 1)
 
     @property
-    def cell(self):
+    def cell(self) -> Cell:
         return self.cells[0][0] if self.is_cell else None
     
     @property
-    def first_cell(self):
+    def first_cell(self) -> Cell:
         return self.cells[0][0] if not self.is_empty else None
     
     @property
-    def last_cell(self):
+    def last_cell(self) -> Cell:
         return self.cells[-1][-1] if not self.is_empty else None
 
     @property
-    def rows(self):
+    def rows(self) -> int:
         return len(self.cells) if not self.is_empty else 0
     
     @property
-    def columns(self):
+    def columns(self) -> int:
         return len(self.cells[0]) if not self.is_empty else 0
 
     @property
-    def sheet(self):
+    def sheet(self) -> Worksheet:
         return self.cells[0][0].parent if not self.is_empty else None
     
     @property
-    def workbook(self):
+    def workbook(self) -> Workbook:
         return self.cells[0][0].parent.parent if not self.is_empty else None
 
     def get_reference(self, absolute=True, use_sheet=True, use_defined_name=True, use_named_table=True) -> str:
@@ -80,4 +82,3 @@ class Range:
         
         end = absolute_coordinate(self.cells[-1][-1].coordinate) if absolute else self.cells[-1][-1].coordinate
         return prefix + start + ":" + end
-        

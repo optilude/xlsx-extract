@@ -28,7 +28,6 @@ def get_locally_defined_name(worksheet : Worksheet, name : str) -> DefinedName:
 
     workbook = worksheet.parent
     
-    # First try a locally defined name
     sheet_id = workbook.index(worksheet)
     if name in workbook.defined_names.localnames(sheet_id):
         defined_name = workbook.defined_names.get(name, sheet_id)
@@ -137,7 +136,7 @@ def update_table(source : Range, target : Range, expand : bool = True):
     if expand:
         target = resize_table(target, source.rows, source.columns)
     
-    for source_row, target_row in zip(source.columns, target.columns):
+    for source_row, target_row in zip(source.cells, target.cells):
         for source_cell, target_cell in zip(source_row, target_row):
             copy_value(source_cell, target_cell)
 
@@ -145,7 +144,7 @@ def extract_vector(table : Range, in_row : bool, index : int) -> Tuple[Cell]:
     """Get a tuple of the cells in the row at `index` if `in_row`, or in the
     column at `index` if not `in_row`.
     """
-    return (table.columns[index] if in_row else [r[index] for r in table.columns])
+    return table.cells[index] if in_row else (r[index] for r in table.cells)
 
 def align_vectors(
     source : Range, source_in_row : bool, source_idx : int,
@@ -170,9 +169,9 @@ def align_vectors(
     source_vector = extract_vector(source, source_in_row, source_idx)
     target_vector = extract_vector(target, target_in_row, target_idx)
 
-    assert source_idx > 0 and source_idx < len(source_vector), \
+    assert source_idx >= 0 and source_idx < len(source_vector), \
         "Source row/column is outside of the target table (this is a bug - it should not happen)"
-    assert target_idx > 0 and target_idx < len(target_vector), \
+    assert target_idx >= 0 and target_idx < len(target_vector), \
         "Target row/column is outside of the target table (this is a bug - it should not happen)"
 
     # Find first row or column and use as labels
@@ -216,9 +215,9 @@ def replace_vector(
         target = resize_table(target, rows, cols)
         target_vector = extract_vector(target, target_in_row, target_idx)
 
-    assert source_idx > 0 and source_idx < len(source_vector), \
+    assert source_idx >= 0 and source_idx < len(source_vector), \
         "Source row/column is outside of the target table (this is a bug - it should not happen)"
-    assert target_idx > 0 and target_idx < len(target_vector), \
+    assert target_idx >= 0 and target_idx < len(target_vector), \
         "Target row/column is outside of the target table (this is a bug - it should not happen)"
 
     # Replace each value in the target bector with the corresponding value
