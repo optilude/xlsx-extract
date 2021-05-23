@@ -82,3 +82,8 @@ class Range:
         
         end = absolute_coordinate(self.cells[-1][-1].coordinate) if absolute else self.cells[-1][-1].coordinate
         return prefix + start + ":" + end
+
+    def get_values(self) -> Tuple[Tuple[Cell]]:
+        return tuple(
+            tuple(c.value for c in r) for r in self.cells
+        )

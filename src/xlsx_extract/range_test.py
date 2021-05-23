@@ -1,3 +1,4 @@
+import datetime
 import os.path
 import openpyxl
 
@@ -19,13 +20,18 @@ class TestRange:
         assert r.workbook is None
         assert r.sheet is None
         assert r.cell is None
+        assert r.first_cell is None
+        assert r.last_cell is None
+        assert r.rows == 0
+        assert r.columns == 0
 
         assert r.get_reference() is None
+        assert r.get_values() == ()
     
     def test_single_cell(self):
         wb = get_test_workbook()
         ws = wb['Report 1']
-        cells = tuple(ws.iter_rows(2, 2, 2, 2))
+        cells = ws['B3:B3']
 
         r = range.Range(cells)
 
@@ -36,15 +42,21 @@ class TestRange:
         assert r.workbook is wb
         assert r.sheet is ws
         assert r.cell is cells[0][0]
+        assert r.first_cell is cells[0][0]
+        assert r.last_cell is cells[0][0]
+        assert r.rows == 1
+        assert r.columns == 1
 
-        assert r.get_reference() == "'Report 1'!$B$2"
-        assert r.get_reference(absolute=False) == "'Report 1'!B2"
-        assert r.get_reference(use_sheet=False) == "$B$2"
+        assert r.get_reference() == "'Report 1'!$B$3"
+        assert r.get_reference(absolute=False) == "'Report 1'!B3"
+        assert r.get_reference(use_sheet=False) == "$B$3"
+
+        assert r.get_values() == (('Date',),)
     
     def test_range_cell(self):
         wb = get_test_workbook()
         ws = wb['Report 1']
-        cells = tuple(ws.iter_rows(2, 3, 2, 3))
+        cells = ws['B2:C3']
 
         r = range.Range(cells)
 
@@ -55,19 +67,29 @@ class TestRange:
         assert r.workbook is wb
         assert r.sheet is ws
         assert r.cell is None
+        assert r.first_cell is cells[0][0]
+        assert r.last_cell is cells[-1][-1]
+        assert r.rows == 2
+        assert r.columns == 2
 
         assert r.get_reference() == "'Report 1'!$B$2:$C$3"
         assert r.get_reference(absolute=False) == "'Report 1'!B2:C3"
         assert r.get_reference(use_sheet=False) == "$B$2:$C$3"
+        
+        assert r.get_values() == (
+            (None, None,),
+            ('Date', datetime.datetime(2021, 5, 1),),
+        )
     
     def test_defined_name(self):
         wb = get_test_workbook()
-        ws = wb['Report 1']
         
         defined_name = utils.get_defined_name(wb, None, "PROFIT_RANGE")
         ref = defined_name.attr_text
 
-        _, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(ref)
+        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(ref)
+        ws = wb[sheet_name]
+
         cells = tuple(ws.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
 
         r = range.Range(cells, defined_name=defined_name)
@@ -79,21 +101,32 @@ class TestRange:
         assert r.workbook is wb
         assert r.sheet is ws
         assert r.cell is None
+        assert r.first_cell is cells[0][0]
+        assert r.last_cell is cells[-1][-1]
+        assert r.rows == 5
+        assert r.columns == 5
 
         assert r.get_reference() == "PROFIT_RANGE"
-        assert r.get_reference(use_defined_name=False) == "'Report 1'!$A$1:$E$5"
-        assert r.get_reference(use_defined_name=False, absolute=False) == "'Report 1'!A1:E5"
+        assert r.get_reference(use_defined_name=False) == "'Report 3'!$A$1:$E$5"
+        assert r.get_reference(use_defined_name=False, absolute=False) == "'Report 3'!A1:E5"
         assert r.get_reference(use_defined_name=False, use_sheet=False) == "$A$1:$E$5"
+
+        assert r.get_values() == (
+            (None, 'Profit', None, 'Loss', None,),
+            (None, '£',	'Plan', '£', 'Plan',),
+            ('Alpha', 100, 100, 50, 20,),
+            ('Beta', 200, 150, 50, 20,),
+            ('Delta', 300, 350, 50, 20,),
+
+        )
+        
     
     def test_named_table(self):
         wb = get_test_workbook()
         ws = wb['Report 2']
         
         named_table = utils.get_named_table(ws, 'RangleTable')
-        ref = utils.add_sheet_to_reference(ws, named_table.ref)
-
-        _, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(ref)
-        cells = tuple(ws.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
+        cells = ws[named_table.ref]
 
         r = range.Range(cells, named_table=named_table)
 
@@ -104,9 +137,19 @@ class TestRange:
         assert r.workbook is wb
         assert r.sheet is ws
         assert r.cell is None
+        assert r.first_cell is cells[0][0]
+        assert r.last_cell is cells[-1][-1]
+        assert r.rows == 4
+        assert r.columns == 4
 
         assert r.get_reference() == "RangleTable"
         assert r.get_reference(use_named_table=False) == "'Report 2'!$B$10:$E$13"
         assert r.get_reference(use_named_table=False, absolute=False) == "'Report 2'!B10:E13"
         assert r.get_reference(use_named_table=False, use_sheet=False) == "$B$10:$E$13"
     
+        assert r.get_values() == (
+            ('Name', 'Date', 'Range', 'Price',),
+            ('Bill', datetime.datetime(2021, 1, 1), 9, 15,),
+            ('Bob', datetime.datetime(2021, 3, 2), 14, 18,),
+            ('Joan', datetime.datetime(2021, 6, 5), 13, 99,),
+        )
