@@ -30,14 +30,19 @@ def test_get_range():
     assert get_range("'Report 1'!A3", wb).get_reference(absolute=False) == "'Report 1'!A3"
     assert get_range("'Report 1'!A3", wb, ws).get_reference(absolute=False) == "'Report 1'!A3"
 
+    assert get_range("'Report 1'!A3:B4", wb).get_reference(absolute=False) == "'Report 1'!A3:B4"
+    assert get_range("'Report 1'!A3:B4", wb, ws).get_reference(absolute=False) == "'Report 1'!A3:B4"
+
     assert get_range("'Report 1'!A3", wb).get_reference(absolute=False) == "'Report 1'!A3"
     assert get_range("'Report 1'!A3", wb, ws).get_reference(absolute=False) == "'Report 1'!A3"
 
     assert get_range("RangleTable", wb) is None
-    assert get_range("RangleTable", wb, ws).get_reference(absolute=False) == "RangleTable"
+    assert get_range("RangleTable", wb, ws).get_reference() == "RangleTable"
+    assert get_range("RangleTable", wb, ws).get_reference(absolute=False, use_named_table=False) == "'Report 2'!B10:E13"
 
     assert get_range("PROFIT_RANGE", wb).get_reference() == "PROFIT_RANGE"
     assert get_range("PROFIT_RANGE", wb, ws).get_reference(absolute=False) == "PROFIT_RANGE"
+    assert get_range("PROFIT_RANGE", wb, ws).get_reference(absolute=False, use_defined_name=False) == "'Report 3'!A1:E5"
 
     assert get_range('NotFound', wb) is None
     assert get_range('NotFound', wb, ws) is None
