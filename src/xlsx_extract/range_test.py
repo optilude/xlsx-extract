@@ -83,26 +83,15 @@ class TestRange:
     
     def test_defined_name(self):
         wb = get_test_workbook()
-        
-        defined_name = utils.get_defined_name(wb, None, "PROFIT_RANGE")
-        ref = defined_name.attr_text
 
-        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(ref)
-        ws = wb[sheet_name]
-
-        cells = tuple(ws.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
-
-        r = range.Range(cells, defined_name=defined_name)
+        r = utils.get_range("PROFIT_RANGE", wb)
 
         assert not r.is_empty
         assert not r.is_cell
         assert r.is_range
 
         assert r.workbook is wb
-        assert r.sheet is ws
         assert r.cell is None
-        assert r.first_cell is cells[0][0]
-        assert r.last_cell is cells[-1][-1]
         assert r.rows == 5
         assert r.columns == 5
 
@@ -124,10 +113,7 @@ class TestRange:
         wb = get_test_workbook()
         ws = wb['Report 2']
         
-        named_table = utils.get_named_table(ws, 'RangleTable')
-        cells = ws[named_table.ref]
-
-        r = range.Range(cells, named_table=named_table)
+        r = utils.get_range('RangleTable', wb, ws)
 
         assert not r.is_empty
         assert not r.is_cell
@@ -136,8 +122,6 @@ class TestRange:
         assert r.workbook is wb
         assert r.sheet is ws
         assert r.cell is None
-        assert r.first_cell is cells[0][0]
-        assert r.last_cell is cells[-1][-1]
         assert r.rows == 4
         assert r.columns == 4
 

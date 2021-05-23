@@ -3,7 +3,7 @@ import datetime
 import pytest
 import openpyxl
 
-from . import match, utils
+from . import match
 
 def get_test_workbook():
     filename = os.path.join(os.path.dirname(__file__), 'test_data', 'source.xlsx')

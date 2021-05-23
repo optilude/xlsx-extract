@@ -3,6 +3,7 @@ import os.path
 import openpyxl
 
 from .utils import (
+    get_range,
     get_globally_defined_name,
     get_defined_name,
     get_named_table,
@@ -18,6 +19,28 @@ from .range import Range
 def get_test_workbook(filename='source.xlsx', data_only=True):
     filename = os.path.join(os.path.dirname(__file__), 'test_data', filename)
     return openpyxl.load_workbook(filename, data_only=data_only)
+
+def test_get_range():
+    wb = get_test_workbook()
+    ws = wb['Report 2']
+
+    assert get_range('A3', wb) is None
+    assert get_range('A3', wb, ws).get_reference(absolute=False) == "'Report 2'!A3"
+    
+    assert get_range("'Report 1'!A3", wb).get_reference(absolute=False) == "'Report 1'!A3"
+    assert get_range("'Report 1'!A3", wb, ws).get_reference(absolute=False) == "'Report 1'!A3"
+
+    assert get_range("'Report 1'!A3", wb).get_reference(absolute=False) == "'Report 1'!A3"
+    assert get_range("'Report 1'!A3", wb, ws).get_reference(absolute=False) == "'Report 1'!A3"
+
+    assert get_range("RangleTable", wb) is None
+    assert get_range("RangleTable", wb, ws).get_reference(absolute=False) == "RangleTable"
+
+    assert get_range("PROFIT_RANGE", wb).get_reference() == "PROFIT_RANGE"
+    assert get_range("PROFIT_RANGE", wb, ws).get_reference(absolute=False) == "PROFIT_RANGE"
+
+    assert get_range('NotFound', wb) is None
+    assert get_range('NotFound', wb, ws) is None
 
 def test_get_globally_defined_name():
     wb = get_test_workbook()
@@ -203,10 +226,7 @@ class TestResizeTable:
     def test_resize_defined_name_table(self):
         wb = get_test_workbook()
 
-        defined_name = get_defined_name(wb, None, "PROFIT_RANGE")        
-        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(defined_name.attr_text)
-        cells = tuple(wb[sheet_name].iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
-        table = Range(cells, defined_name=defined_name)
+        table = get_range('PROFIT_RANGE', wb)
 
         assert table.get_values() == (
             (None, 'Profit', None, 'Loss', None,),
@@ -227,10 +247,7 @@ class TestResizeTable:
         )
 
         # check that the named range now resolves to the new table
-        defined_name = get_defined_name(wb, None, "PROFIT_RANGE")        
-        sheet_name, (c1, r1, c2, r2) = openpyxl.utils.cell.range_to_tuple(defined_name.attr_text)
-        cells = tuple(wb[sheet_name].iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
-        confirm_table = Range(cells, defined_name=defined_name)
+        confirm_table = get_range('PROFIT_RANGE', wb)
 
         assert confirm_table.get_values() == (
             (None, 'Profit', None, 'Loss', None, None, None,),
@@ -243,8 +260,7 @@ class TestResizeTable:
         wb = get_test_workbook()
         ws = wb['Report 2']
         
-        named_table = get_named_table(ws, 'RangleTable')
-        table = Range(ws[named_table.ref], named_table=named_table)
+        table = get_range('RangleTable', wb, ws)
 
         assert table.get_values() == (
             ('Name', 'Date', 'Range', 'Price',),
@@ -268,8 +284,7 @@ class TestResizeTable:
 
         # Check the named reference was updated
 
-        named_table = get_named_table(ws, 'RangleTable')
-        confirm_table = Range(ws[named_table.ref], named_table=named_table)
+        confirm_table = get_range('RangleTable', wb, ws)
 
         assert confirm_table.get_values() == (
             ('Name', 'Date', 'Range',),

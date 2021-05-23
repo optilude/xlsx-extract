@@ -8,15 +8,10 @@ from dataclasses import dataclass
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell import Cell
-from openpyxl.utils.cell import range_to_tuple
 
 from .range import Range
 
-from .utils import (
-    get_defined_name,
-    get_named_table,
-    add_sheet_to_reference
-)
+from .utils import get_range
 
 class Operator(Enum):
 
@@ -146,27 +141,8 @@ class Match:
         """
         if self.reference is None or self.reference == "":
             return None
-        
-        defined_name = get_defined_name(workbook, worksheet, self.reference)
-        named_table = get_named_table(worksheet, self.reference)
-        
-        ref = \
-            defined_name.attr_text if defined_name is not None \
-            else named_table.ref if named_table is not None \
-            else self.reference
 
-        ref = add_sheet_to_reference(worksheet, ref)
-
-        sheet_name, (c1, r1, c2, r2) = range_to_tuple(ref)
-
-        # not found
-        if None in (r1, c1, r2, c2,):
-            return None
-        
-        sheet = workbook[sheet_name]
-
-        cells = tuple(sheet.iter_rows(min_row=r1, min_col=c1, max_row=r2, max_col=c2))
-        return Range(cells, defined_name=defined_name, named_table=named_table)
+        return get_range(self.reference, workbook, worksheet)
 
 @dataclass
 class CellMatch(Match):
