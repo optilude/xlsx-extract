@@ -6,9 +6,11 @@ from datetime import datetime, date, time
 from dataclasses import dataclass
 
 from openpyxl import Workbook
+from openpyxl.workbook.defined_name import DefinedName
+from openpyxl.worksheet.table import Table
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell import Cell
-from openpyxl.utils.cell import range_to_tuple
+from openpyxl.utils.cell import absolute_coordinate, quote_sheetname, range_to_tuple
 
 from .utils import (
     get_defined_name,
@@ -31,6 +33,60 @@ class Operator(Enum):
     REGEX = "regex"
 
 @dataclass
+class Range:
+    """One or multiple contiguous cells, possibly identified by a name,
+    in a tuple (rows) of tuples (columns).
+    """
+
+    cells : Tuple[Tuple[Cell]]
+    
+    defined_name : DefinedName = None
+    named_table : Table = None
+
+    def __post_init__(self):
+        assert not (self.defined_name is not None and self.named_table is not None), \
+            "A results range cannot have both a defined name and a table name"
+
+    @property
+    def is_empty(self):
+        return len(self.cells) == 0 or len(self.cells[0]) == 0
+
+    @property
+    def is_cell(self):
+        return not self.is_empty and len(self.cells) == 1 and len(self.cells[0]) == 1
+
+    @property
+    def cell(self):
+        return self.cells[0][0] if self.is_cell else None
+    
+    @property
+    def sheet(self):
+        return self.cells[0][0].parent if not self.is_empty else None
+    
+    @property
+    def workbook(self):
+        return self.cells[0][0].parent.parent if not self.is_empty else None
+
+    def get_reference(self, absolute=True, use_sheet=True, use_defined_name=True, use_named_table=True) -> str:
+        if self.is_empty:
+            return None
+        
+        if use_defined_name and self.defined_name is not None:
+            return self.defined_name.name
+
+        if use_named_table and self.named_table is not None:
+            return self.named_table.name
+        
+        prefix = "%s!" % quote_sheetname(self.sheet.title) if use_sheet else ""
+        start = absolute_coordinate(self.cells[0][0].coordinate) if absolute else self.cells[0][0].coordinate
+
+        if self.is_cell:
+            return prefix + start
+        
+        end = absolute_coordinate(self.cells[-1][-1].coordinate) if absolute else self.cells[-1][-1].coordinate
+        return prefix + start + ":" + end
+        
+@dataclass
 class Comparator:
     """Parameters to find a single cell
     """
@@ -42,7 +98,7 @@ class Comparator:
         if self.operator == Operator.REGEX:
             assert type(self.value) is str, "Regular expression must be a string"
 
-    def match(self, data : Union[str, int, float, bool, date, time, datetime]):
+    def match(self, data : Union[str, int, float, bool, date, time, datetime]) -> Union[str, int, float, bool, date, time, datetime]:
         """Use the `operator` to compare `data` with `value`.
 
         Return value is `None` if not matched, or the matched item.
