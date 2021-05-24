@@ -178,7 +178,7 @@ def extract_vector(table : Range, in_row : bool, index : int) -> Tuple[Cell]:
     """Get a tuple of the cells in the row at `index` if `in_row`, or in the
     column at `index` if not `in_row`.
     """
-    return table.cells[index] if in_row else (r[index] for r in table.cells)
+    return tuple(table.cells[index] if in_row else (r[index] for r in table.cells))
 
 def align_vectors(
     source : Range, source_in_row : bool, source_idx : int,
@@ -216,9 +216,10 @@ def align_vectors(
 
     # For each target label, find and copy the corresponding source cell
     for target_label, target_cell in zip(target_labels, target_vector):
-        source_cell = source_lookup.get(target_label, None)
-        if source_cell is not None:
-            copy_value(source_cell, target_cell)
+        if target_label is not None:
+            source_cell = source_lookup.get(target_label, None)
+            if source_cell is not None:
+                copy_value(source_cell, target_cell)
 
 
 def replace_vector(

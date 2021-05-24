@@ -11,7 +11,10 @@ from .utils import (
     resize_table,
     triangulate_cell,
     copy_value,
-    update_table
+    update_table,
+    extract_vector,
+    align_vectors,
+    replace_vector,
 )
 
 from .range import Range
@@ -387,3 +390,109 @@ def test_update_table_and_expand():
 
     # Has been pushed down
     assert target_wb['Summary']['B13'].value == "Area"
+
+def test_extract_vector():
+    wb = get_test_workbook()
+
+    table = Range(wb['Report 1']['B5:F9'])
+
+    assert table.get_values() == (
+        (None, 'Jan', 'Feb', 'Mar', 'Apr',),
+        ('Alpha', 1.5, 6, 11, 4.6,),
+        ('Beta', 2, 7, 12, 4.7,),
+        ('Delta', 2.5, 8, 13, 4.8,),
+        ('Gamma', 3, 9, 14, 4.9,),
+    )
+    
+    assert tuple(c.value for c in extract_vector(table, in_row=True, index=1)) == ('Alpha', 1.5, 6, 11, 4.6,)
+    assert tuple(c.value for c in extract_vector(table, in_row=False, index=1)) == ('Jan', 1.5, 2, 2.5, 3,)
+
+def test_align_vectors():
+    source_wb = get_test_workbook()
+    target_wb = get_test_workbook('target.xlsx')
+
+    source = Range(source_wb['Report 1']['B5:F9'])
+    target = Range(target_wb['Summary']['B7:E9'])
+
+    assert source.get_values() == (
+        (None,   'Jan', 'Feb', 'Mar', 'Apr',),
+        ('Alpha', 1.5,     6,     11,   4.6,),
+        ('Beta',    2,     7,     12,   4.7,),
+        ('Delta', 2.5,     8,     13,   4.8,),
+        ('Gamma',   3,     9,     14,   4.9,),
+    )
+
+    assert target.get_values() == (
+        (None,     'Alpha', 'Delta', 'Beta',),
+        ('Profit',    None,    None,  None,),
+        ('Loss',      None,    None,  None,),
+    )
+
+    # Align third column of source to second row of target
+    align_vectors(source, False, 2, target, True, 1)
+
+    assert Range(target_wb['Summary']['B7:E9']).get_values() == (
+        (None,     'Alpha', 'Delta', 'Beta',),
+        ('Profit',       6,       8,      7,),
+        ('Loss',      None,    None,   None,),
+    )
+
+def test_replace_vector():
+    source_wb = get_test_workbook()
+    target_wb = get_test_workbook('target.xlsx')
+
+    source = Range(source_wb['Report 1']['B5:F9'])
+    target = Range(target_wb['Summary']['B7:E9'])
+
+    assert source.get_values() == (
+        (None,   'Jan', 'Feb', 'Mar', 'Apr',),
+        ('Alpha', 1.5,     6,     11,   4.6,),
+        ('Beta',    2,     7,     12,   4.7,),
+        ('Delta', 2.5,     8,     13,   4.8,),
+        ('Gamma',   3,     9,     14,   4.9,),
+    )
+
+    assert target.get_values() == (
+        (None,     'Alpha', 'Delta', 'Beta',),
+        ('Profit',    None,    None,  None,),
+        ('Loss',      None,    None,  None,),
+    )
+
+    # Replace third column of source to second row of target
+    replace_vector(source, False, 2, target, True, 1, expand=False)
+
+    assert Range(target_wb['Summary']['B7:F9']).get_values() == (
+        (None,   'Alpha', 'Delta', 'Beta', None,),
+        ('Feb',   6,            7,      8, None,),
+        ('Loss',  None,      None,   None, None,),
+    )
+
+def test_replace_vector_expand():
+    source_wb = get_test_workbook()
+    target_wb = get_test_workbook('target.xlsx')
+
+    source = Range(source_wb['Report 1']['B5:F9'])
+    target = Range(target_wb['Summary']['B7:E9'])
+
+    assert source.get_values() == (
+        (None,   'Jan', 'Feb', 'Mar', 'Apr',),
+        ('Alpha', 1.5,     6,     11,   4.6,),
+        ('Beta',    2,     7,     12,   4.7,),
+        ('Delta', 2.5,     8,     13,   4.8,),
+        ('Gamma',   3,     9,     14,   4.9,),
+    )
+
+    assert target.get_values() == (
+        (None,     'Alpha', 'Delta', 'Beta',),
+        ('Profit',    None,    None,  None,),
+        ('Loss',      None,    None,  None,),
+    )
+
+    # Replace third column of source to second row of target
+    replace_vector(source, False, 2, target, True, 1, expand=True)
+
+    assert Range(target_wb['Summary']['B7:F9']).get_values() == (
+        (None,   'Alpha', 'Delta', 'Beta', None,),
+        ('Feb',   6,            7,      8,    9,),
+        ('Loss',  None,      None,   None, None,),
+    )
