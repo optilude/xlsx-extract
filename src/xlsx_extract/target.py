@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from openpyxl.cell import Cell
 
 from .range import Range
-from .match import Match, CellMatch, RangeMatch
+from .match import Match, CellMatch, RangeMatch, Comparator, Operator
 from .utils import copy_value, triangulate_cell, update_table, replace_vector, align_vectors
 
 def locate_cell_in_range(workbook : Workbook, range_cells : Range, cell_match : CellMatch) -> Cell:
@@ -23,10 +23,13 @@ def locate_cell_in_range(workbook : Workbook, range_cells : Range, cell_match : 
     m.max_row = range_cells.last_cell.row
     m.max_col = range_cells.last_cell.column
 
+    if m.sheet is None and range_cells.sheet is not None:
+        m.sheet = Comparator(Operator.EQUAL, range_cells.sheet.title)
+
     cell_range, _ = m.match(workbook)
 
     if (
-        cell_range is not None or not cell_range.is_cell or (
+        cell_range is None or not cell_range.is_cell or (
             cell_range.cell.column < m.min_col or cell_range.cell.column > m.max_col or 
             cell_range.cell.row < m.min_row or cell_range.cell.row > m.max_row
         )
@@ -90,7 +93,7 @@ class Target:
     align : bool = False
 
     # Whether to expand table or truncate values when copying (if align == False)
-    expand : bool = True
+    expand : bool = False
 
     def __post_init__(self):
         
@@ -113,7 +116,7 @@ class Target:
         if self.target_col is not None and self.target.sheet is not None:
             self.target_col.sheet = self.target.sheet
 
-    def extract(self, source_workbook : Workbook, target_workbook : Workbook) -> Tuple[Union[Cell,Tuple[Cell]], Any]:
+    def extract(self, source_workbook : Workbook, target_workbook : Workbook) -> Tuple[Range, Any]:
         """Extract source cell from the source workbook and update target workbook.
         Returns source match.
         """
@@ -168,9 +171,9 @@ class Target:
             "%s: Cannot copy a table to a single cell or vice-versa" % self.source.name
         
         # They should also be non-empty
-        assert source_range.is_empty, \
+        assert not source_range.is_empty, \
             "%s: Source cell range is empty (this is a bug - it should never happen)" % self.source.name
-        assert target_range.is_empty, \
+        assert not target_range.is_empty, \
             "%s: Target cell range is empty (this is a bug - it should never happen)" % self.source.name
 
         # We also should have at most one of source_row and source_col set (to identify a vector)
