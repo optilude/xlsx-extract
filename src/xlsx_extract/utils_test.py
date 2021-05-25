@@ -304,7 +304,7 @@ class TestResizeTable:
         )
 
 def test_update_table_without_expanding():
-    source_wb = get_test_workbook()
+    source_wb = get_test_workbook('source.xlsx')
     target_wb = get_test_workbook('target.xlsx')
 
     source = Range(source_wb['Report 1']['B5:F9'])
@@ -345,7 +345,7 @@ def test_update_table_without_expanding():
     assert target_wb['Summary']['B11'].value == "Area"
 
 def test_update_table_and_expand():
-    source_wb = get_test_workbook()
+    source_wb = get_test_workbook('source.xlsx')
     target_wb = get_test_workbook('target.xlsx')
 
     source = Range(source_wb['Report 1']['B5:F9'])
@@ -408,7 +408,7 @@ def test_extract_vector():
     assert tuple(c.value for c in extract_vector(table, in_row=False, index=1)) == ('Jan', 1.5, 2, 2.5, 3,)
 
 def test_align_vectors():
-    source_wb = get_test_workbook()
+    source_wb = get_test_workbook('source.xlsx')
     target_wb = get_test_workbook('target.xlsx')
 
     source = Range(source_wb['Report 1']['B5:F9'])
@@ -438,7 +438,7 @@ def test_align_vectors():
     )
 
 def test_replace_vector():
-    source_wb = get_test_workbook()
+    source_wb = get_test_workbook('source.xlsx')
     target_wb = get_test_workbook('target.xlsx')
 
     source = Range(source_wb['Report 1']['B5:F9'])
@@ -468,7 +468,7 @@ def test_replace_vector():
     )
 
 def test_replace_vector_expand():
-    source_wb = get_test_workbook()
+    source_wb = get_test_workbook('source.xlsx')
     target_wb = get_test_workbook('target.xlsx')
 
     source = Range(source_wb['Report 1']['B5:F9'])
