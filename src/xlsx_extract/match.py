@@ -112,6 +112,9 @@ class Match:
 
     name : str
 
+    # Workbook file path (optional, used only for config purposes)
+    workbook_path : str = None
+
     # What sheet are we on? Optional if `reference` is set
     sheet : Comparator = None
 
@@ -199,6 +202,9 @@ class CellMatch(Match):
         if self.row_offset != 0 or self.col_offset != 0:
             cell = cell.offset(self.row_offset, self.col_offset)
         
+        if match is None:
+            match = cell.value
+
         return (
             Range(((cell,),)),
             match,

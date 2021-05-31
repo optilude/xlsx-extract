@@ -336,7 +336,7 @@ class TestCellMatch:
         v, s = m.match(wb)
 
         assert v.cell.value == "Date"
-        assert s is None
+        assert s == "Date"
     
     def test_find_by_reference_not_found(self):
         wb = get_test_workbook()
@@ -361,7 +361,7 @@ class TestCellMatch:
         v, s = m.match(wb)
         
         assert v.cell.value == "Date"
-        assert s is None
+        assert s == "Date"
 
     def test_find_by_reference_cell_with_sheet(self):
         wb = get_test_workbook()
@@ -374,7 +374,7 @@ class TestCellMatch:
         v, s = m.match(wb)
         
         assert v.cell.value == "Date"
-        assert s is None
+        assert s == "Date"
 
     def test_find_by_reference_range(self):
         wb = get_test_workbook()
@@ -391,7 +391,7 @@ class TestCellMatch:
         v, s = m.match(wb)
 
         assert v.cell.value == datetime.datetime(2021, 5, 1, 0, 0)
-        assert s is None
+        assert s == datetime.datetime(2021, 5, 1, 0, 0)
     
     def test_find_by_reference_named_range(self):
         wb = get_test_workbook()
@@ -1042,7 +1042,7 @@ class TestRangeMatch:
             (2.5, 8, 13, 4.8,),
             (3, 9, 14, 4.9,),
         )
-        assert s is None
+        assert s == "Jan"
     
     def test_find_by_start_cell_contiguous_first_blank(self):
         wb = get_test_workbook()
