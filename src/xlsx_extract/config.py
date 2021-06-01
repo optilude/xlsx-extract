@@ -187,7 +187,15 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
             variables[GlobalKeys.DIRECTORY] = source_directory
 
         if GlobalKeys.FILE in block:
-            source_file, file_match = extract_filename(block, source_directory)
+            source_file = None
+            file_match = None
+
+            try:
+                source_file, file_match = extract_filename(block, source_directory)
+            except AssertionError as e:
+                # An assertion failed
+                history.append(Action(GlobalKeys.FILE, False, str(e)))
+                continue
 
             if source_file is None:
                 history.append(Action(GlobalKeys.FILE, False, "Malformed block", comparator=block[GlobalKeys.FILE]))
@@ -312,17 +320,39 @@ def extract_directory(block : Dict[str, Comparator]) -> str:
 
 def extract_filename(block : Dict[str, Comparator], current_directory : str) -> Tuple[str, str]:
     """Extract filename from block. May involve matching filesystem filenames.
+    Returns a tuple of validated file path and filename match. May raise an
+    AssertionError if file or directory not found.
     """
 
     comp = block.get(GlobalKeys.FILE, None)
     if comp is None or not isinstance(comp.value, (str, bytes,)) or comp.operator not in (Operator.EQUAL, Operator.REGEX,):
-        return None
+        return (None, None,)
     
-    # TODO: Variables, match, join with directory
-    filename = comp.value
-    filename_match = filename
+    assert os.path.isdir(current_directory), "Directory `%s` not found" % current_directory
 
-    return filename, filename_match
+    with_dir = lambda f: os.path.join(current_directory, f)
+    is_file = lambda f: os.path.isfile(with_dir(f))
+
+    filename = None
+    match = None
+
+    if comp.operator == Operator.EQUAL:
+        filename = match = comp.value
+    elif comp.operator == Operator.REGEX:
+        time_sort = lambda f: os.path.getmtime(with_dir(f))
+        files = sorted(filter(is_file, os.listdir(current_directory)), key=time_sort)
+    
+        for f in reversed(files):
+            match = comp.match(f)
+            if match is not None:
+                filename = f
+                break
+
+    if filename is None:
+        return (None, None,)
+
+    assert is_file(filename), "File `%s` not found" % comp.value
+    return (with_dir(filename), match,)
 
 
 def extract_source_match(block : Dict[str, Comparator], source_workbook : Workbook) -> Match:
