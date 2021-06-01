@@ -112,9 +112,6 @@ class Match:
 
     name : str
 
-    # Workbook file path (optional, used only for config purposes)
-    workbook_path : str = None
-
     # What sheet are we on? Optional if `reference` is set
     sheet : Comparator = None
 
