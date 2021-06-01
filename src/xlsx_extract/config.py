@@ -174,13 +174,19 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
             continue
         
         if block is None:
+            # Block was not a block after all - ignore
             continue
         
         if GlobalKeys.DIRECTORY in block:
-            source_directory = extract_directory(block)
+            try:
+                source_directory = extract_directory(block)
+            except AssertionError as e:
+                # Malformed block
+                history.append(Action(GlobalKeys.DIRECTORY, False, str(e)))
+                continue
 
             if source_directory is None:
-                history.append(Action(GlobalKeys.DIRECTORY, False, "Malformed block", comparator=block[GlobalKeys.DIRECTORY]))
+                # Block was not a block after all - ignore
                 continue
             
             history.append(Action(GlobalKeys.DIRECTORY, True, "Obtained %s" % source_directory, comparator=block[GlobalKeys.DIRECTORY]))
@@ -193,12 +199,12 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
             try:
                 source_file, file_match = extract_filename(block, source_directory)
             except AssertionError as e:
-                # An assertion failed
+                # Directory or file not found, or malformed block
                 history.append(Action(GlobalKeys.FILE, False, str(e)))
                 continue
 
             if source_file is None:
-                history.append(Action(GlobalKeys.FILE, False, "Malformed block", comparator=block[GlobalKeys.FILE]))
+                # Block was not a block after all - ignore
                 continue
             
             try:
@@ -250,7 +256,7 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
             # Target with source match
             else:
                 try:
-                    match_range, match_value = target.match(source_workbook, target_workbook)
+                    match_range, match_value = target.extract(source_workbook, target_workbook)
                 except AssertionError as e:
                     # An assertion failed during target execution
                     history.append(Action(block_name, False, str(e), match=source_match, target=target))
@@ -273,7 +279,7 @@ def parse_block(match_range : Range, variables : Dict[str, Any]) -> Dict[str, Co
     if match_range.is_empty or not match_range.is_range or match_range.columns < 3:
         return None
 
-    blocks = {}
+    block = {}
 
     for row in match_range.get_values():
 
@@ -293,17 +299,16 @@ def parse_block(match_range : Range, variables : Dict[str, Any]) -> Dict[str, Co
         if comparator is None:
             continue
 
-        blocks[name.strip().lower()] = comparator
+        block[name.strip().lower()] = comparator
 
-    return blocks
+    return block
 
 def parse_comparator(operator : str, value : Any) -> Comparator:
     """Build a comparator from an operator string name and a value
     """
 
     op = Operators.get(operator.strip().lower(), None)
-    if op is None:
-        return None
+    assert op is not None, "Operator `%s` not recognised" % operator
     
     return Comparator(op, value)
 
@@ -312,8 +317,11 @@ def extract_directory(block : Dict[str, Comparator]) -> str:
     """
 
     comp = block.get(GlobalKeys.DIRECTORY, None)
-    if comp is None or not isinstance(comp.value, (str, bytes,)) or comp.operator != Operator.EQUAL:
+    if comp is None:
         return None
+        
+    assert isinstance(comp.value, (str, bytes,)) and comp.operator == Operator.EQUAL, \
+        "Directory block must use operator `is` and a string value"
     
     # When on Windows, do like the Windowsians
     return comp.value.replace('/', os.path.sep)
@@ -325,8 +333,11 @@ def extract_filename(block : Dict[str, Comparator], current_directory : str) -> 
     """
 
     comp = block.get(GlobalKeys.FILE, None)
-    if comp is None or not isinstance(comp.value, (str, bytes,)) or comp.operator not in (Operator.EQUAL, Operator.REGEX,):
+    if comp is None:
         return (None, None,)
+    
+    assert isinstance(comp.value, (str, bytes,)) and comp.operator in (Operator.EQUAL, Operator.REGEX,), \
+        "File block must use operator `is` or `matches` and a string value"
     
     assert os.path.isdir(current_directory), "Directory `%s` not found" % current_directory
 
@@ -348,8 +359,7 @@ def extract_filename(block : Dict[str, Comparator], current_directory : str) -> 
                 filename = f
                 break
 
-    if filename is None:
-        return (None, None,)
+        assert filename is not None, "No matching file found for `%s` in `%s`" % (comp.value, current_directory,)
 
     assert is_file(filename), "File `%s` not found" % comp.value
     return (with_dir(filename), match,)

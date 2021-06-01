@@ -1,3 +1,5 @@
+import pytest
+
 from dataclasses import dataclass
 from typing import Any, Tuple
 from .match import Comparator, Operator
@@ -21,21 +23,20 @@ def test_extract_directory():
         'directory': Comparator(Operator.EQUAL, "/foo/bar")
     }) == "/foo/bar"
 
-    assert extract_directory({
-        'foo': Comparator(Operator.EQUAL, "/foo/bar")
-    }) is None
+    with pytest.raises(AssertionError):
+        extract_directory({
+            'directory': Comparator(Operator.EQUAL, 13)
+        })
 
-    assert extract_directory({
-        'directory': Comparator(Operator.EQUAL, 13)
-    }) is None
+    with pytest.raises(AssertionError):
+        extract_directory({
+            'directory': Comparator(Operator.REGEX, "/foo/bar/${stuff}/bar")
+        })
 
-    assert extract_directory({
-        'directory': Comparator(Operator.REGEX, "/foo/bar/${stuff}/bar")
-    }) is None
-
-    assert extract_directory({
-        'directory': Comparator(Operator.NOT_EMPTY, "/foo/bar/${stuff}/bar")
-    }) is None
+    with pytest.raises(AssertionError):
+        extract_directory({
+            'directory': Comparator(Operator.NOT_EQUAL, "/foo/bar")
+        })
 
 def test_parse_comparator():
 
