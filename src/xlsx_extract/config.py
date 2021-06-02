@@ -3,6 +3,7 @@ import os
 from dataclasses import dataclass
 from string import Template
 from typing import Any, Dict, List, Match, Tuple, Union
+from _pytest.python import Function
 import openpyxl
 
 from openpyxl.workbook.workbook import Workbook
@@ -184,7 +185,8 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
     block_match = RangeMatch(
         name="block",
         sheet=Comparator(Operator.EQUAL, config_sheet),
-        start_cell=CellMatch("key", value=Comparator(
+        start_cell=CellMatch("key",
+            value=Comparator(
                 Operator.REGEX, r'^\s*(' + '|'.join(
                     (GlobalKeys.DIRECTORY, GlobalKeys.FILE, MatchKeys.NAME,)
                 ) + r')\s*$')
@@ -192,7 +194,7 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
         min_row=1,
         )
     
-    while (match := block_match.match(target_workbook)) is not None:
+    while (match := block_match.match(target_workbook)) != (None, None,):
         block_range, _ = match
 
         # prepare for next match (put this up top so we can use `continue` safely!)
@@ -402,7 +404,8 @@ def extract_filename(block : Dict[str, Comparator], current_directory : str) -> 
     
     return (with_dir(filename), match,)
 
-def _cast_col(col):
+def cast_col(col : Any) -> int:
+
     if isinstance(col, (str, bytes,)):
         try:
             col = column_index_from_string(col)
@@ -411,11 +414,13 @@ def _cast_col(col):
     assert col is None or isinstance(col, int), "%s is not a valid column name" % col
     return col
 
-def _contains_cell_match(block, prefix=Prefix.none):
+def contains_cell_match(block : Dict[str, Comparator], prefix : Function = Prefix.none) -> bool:
+
     return prefix(CellMatchKeys.CELL_REFERENCE) in block or prefix(CellMatchKeys.VALUE)
 
-def _build_cell_match(block : Dict[str, Comparator], name, sheet=None, prefix=Prefix.none) -> CellMatch:
+def build_cell_match(block : Dict[str, Comparator], name : str = None, sheet : Comparator = None, prefix : Function = Prefix.none) -> CellMatch:
 
+    name = name if name is not None else block[MatchKeys.NAME].value if MatchKeys.NAME in block else None
     sheet = block[prefix(CellMatchKeys.SHEET)] if prefix(CellMatchKeys.SHEET) in block else sheet
     reference = block[prefix(CellMatchKeys.CELL_REFERENCE)].value if prefix(CellMatchKeys.CELL_REFERENCE) in block else None
     value = block[prefix(CellMatchKeys.VALUE)] if prefix(CellMatchKeys.VALUE) in block else None
@@ -423,8 +428,8 @@ def _build_cell_match(block : Dict[str, Comparator], name, sheet=None, prefix=Pr
     col_offset = block[prefix(CellMatchKeys.COL_OFFSET)].value if prefix(CellMatchKeys.COL_OFFSET) in block else None
     min_row = block[prefix(CellMatchKeys.MIN_ROW)].value if prefix(CellMatchKeys.MIN_ROW) in block else None
     max_row = block[prefix(CellMatchKeys.MAX_ROW)].value if prefix(CellMatchKeys.MAX_ROW) in block else None
-    min_col = _cast_col(block[prefix(CellMatchKeys.MIN_COL)].value) if prefix(CellMatchKeys.MIN_COL) in block else None
-    max_col = _cast_col(block[prefix(CellMatchKeys.MAX_COL)].value) if prefix(CellMatchKeys.MAX_COL) in block else None
+    min_col = cast_col(block[prefix(CellMatchKeys.MIN_COL)].value) if prefix(CellMatchKeys.MIN_COL) in block else None
+    max_col = cast_col(block[prefix(CellMatchKeys.MAX_COL)].value) if prefix(CellMatchKeys.MAX_COL) in block else None
     
     assert name is not None and isinstance(name, (str, bytes,)), "Block name must be a string"
     assert reference is None or isinstance(reference, (str, bytes,)), "Cell reference must be a string"
@@ -448,15 +453,39 @@ def _build_cell_match(block : Dict[str, Comparator], name, sheet=None, prefix=Pr
         max_col=max_col,
     )
 
+def build_range_match(block : Dict[str, Comparator], name : str = None) -> CellMatch:
+
+    name = name if name is not None else block[MatchKeys.NAME].value if MatchKeys.NAME in block else None
+    sheet = block[RangeMatchKeys.SHEET] if RangeMatchKeys.SHEET in block else None
+    reference = block[RangeMatchKeys.TABLE_REFERENCE].value if RangeMatchKeys.TABLE_REFERENCE in block else None
+    rows = block[RangeMatchKeys.ROWS].value if RangeMatchKeys.ROWS in block else None
+    cols = block[RangeMatchKeys.COLS].value if RangeMatchKeys.COLS in block else None
+    start_cell = build_cell_match(block, "%s:start" % name, sheet, Prefix.start) if contains_cell_match(block, Prefix.start) else None
+    end_cell = build_cell_match(block, "%s:end" % name, sheet, Prefix.end) if contains_cell_match(block, Prefix.end) else None
+
+    assert reference is None or isinstance(reference, (str, bytes,)), "Table reference must be a string"
+    assert rows is None or isinstance(rows, int), "Rows must be a number"
+    assert cols is None or isinstance(cols, int), "Rows must be a number"
+
+    return RangeMatch(
+        name=name,
+        sheet=sheet,
+        reference=reference,
+        start_cell=start_cell,
+        end_cell=end_cell,
+        rows=rows,
+        cols=cols,
+    )
+
 def extract_source_match(block : Dict[str, Comparator]) -> Match:
     """Create a CellMatch or RangeMatch from the block if possible
     """
 
-    is_cell_match = MatchKeys.NAME in block and _contains_cell_match(block)
+    is_cell_match = MatchKeys.NAME in block and contains_cell_match(block)
 
     is_range_match = MatchKeys.NAME in block and (
         RangeMatchKeys.TABLE_REFERENCE in block or
-        _contains_cell_match(block, Prefix.start)
+        contains_cell_match(block, Prefix.start)
     )
 
     if not is_cell_match and not is_range_match:
@@ -464,32 +493,11 @@ def extract_source_match(block : Dict[str, Comparator]) -> Match:
     
     assert not (is_cell_match and is_cell_match), "Block refers to both a cell and a range"
 
-    name = block[MatchKeys.NAME].value
-
     if is_cell_match:
-        return _build_cell_match(block, name)
+        return build_cell_match(block)
     elif is_range_match:
-        sheet = block[RangeMatchKeys.SHEET] if RangeMatchKeys.SHEET in block else None
-        reference = block[RangeMatchKeys.TABLE_REFERENCE].value if RangeMatchKeys.TABLE_REFERENCE in block else None
-        rows = block[RangeMatchKeys.ROWS].value if RangeMatchKeys.ROWS in block else None
-        cols = block[RangeMatchKeys.COLS].value if RangeMatchKeys.COLS in block else None
-        start_cell = _build_cell_match(block, "%s:start" % name, sheet, Prefix.start) if _contains_cell_match(block, Prefix.start) else None
-        end_cell = _build_cell_match(block, "%s:end" % name, sheet, Prefix.end) if _contains_cell_match(block, Prefix.end) else None
-
-        assert reference is None or isinstance(reference, (str, bytes,)), "Table reference must be a string"
-        assert rows is None or isinstance(rows, int), "Rows must be a number"
-        assert cols is None or isinstance(cols, int), "Rows must be a number"
-
-        return RangeMatch(
-            name=name,
-            sheet=sheet,
-            reference=reference,
-            start_cell=start_cell,
-            end_cell=end_cell,
-            rows=rows,
-            cols=cols,
-        )
-
+        return build_range_match(block)
+    
     return None
 
 def extract_target(block : Dict[str, Comparator], source_match : Match) -> Target:
@@ -505,11 +513,11 @@ def extract_target(block : Dict[str, Comparator], source_match : Match) -> Targe
     align = block[TargetKeys.ALIGN].value if TargetKeys.ALIGN in block else None
     expand = block[TargetKeys.EXPAND].value if TargetKeys.ALIGN in block else None
 
-    source_row = _build_cell_match(block, "%s:source_row" % source_match.name, source_match.sheet, Prefix.source_row) if _contains_cell_match(block, Prefix.source_row) else None
-    source_col = _build_cell_match(block, "%s:source_col" % source_match.name, source_match.sheet, Prefix.source_col) if _contains_cell_match(block, Prefix.source_col) else None
+    source_row = build_cell_match(block, "%s:source_row" % source_match.name, source_match.sheet, Prefix.source_row) if contains_cell_match(block, Prefix.source_row) else None
+    source_col = build_cell_match(block, "%s:source_col" % source_match.name, source_match.sheet, Prefix.source_col) if contains_cell_match(block, Prefix.source_col) else None
 
-    target_row = _build_cell_match(block, "%s:target_row" % source_match.name, None, Prefix.target_row) if _contains_cell_match(block, Prefix.target_row) else None
-    target_col = _build_cell_match(block, "%s:target_col" % source_match.name, None, Prefix.target_col) if _contains_cell_match(block, Prefix.target_col) else None
+    target_row = build_cell_match(block, "%s:target_row" % source_match.name, None, Prefix.target_row) if contains_cell_match(block, Prefix.target_row) else None
+    target_col = build_cell_match(block, "%s:target_col" % source_match.name, None, Prefix.target_col) if contains_cell_match(block, Prefix.target_col) else None
 
     assert not (target_cell is not None and target_table is not None), "Only one of 'Target cell' and 'Target table' should be given"    
     assert target_cell is None or isinstance(target_cell, (str, bytes,)), "Target cell reference must be a string"
