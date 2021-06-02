@@ -165,7 +165,7 @@ class CellMatch(Match):
     def __post_init__(self):
 
         assert self.reference is not None or self.value is not None, \
-                "%s: Either cell reference or cell value must be given to identify a cell" % self.name
+            "%s: Either cell reference or cell value must be given to identify a cell" % self.name
 
         if self.reference is not None:
             assert self.value is None, "%s: Cell value cannot be specified if cell reference is given" % self.name
