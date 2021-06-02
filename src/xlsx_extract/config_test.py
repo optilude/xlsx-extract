@@ -1,4 +1,7 @@
 import pytest
+import time
+import tempfile
+import os.path
 
 from dataclasses import dataclass
 from typing import Any, Tuple
@@ -7,6 +10,7 @@ from .match import Comparator, Operator
 from .config import (
     interpolate_variables,
     extract_directory,
+    extract_filename,
     parse_comparator,
     parse_block,
 )
@@ -143,3 +147,73 @@ def test_parse_block():
         bar=Comparator(Operator.NOT_EQUAL, "four bar"),
     )
 
+def test_extract_filename():
+    
+    with tempfile.TemporaryDirectory() as current_directory:
+
+        d = lambda f: os.path.join(current_directory, f)
+
+        # Create some test files
+        for filename in ('test1.xlsx', 'test2.xlsx', 'foo.xlsx', 'bar.txt', 'baz.xlsx',):
+            time.sleep(0.01) # space out modified time - regex match should use most recent
+            with open(d(filename), 'w') as fp:
+                fp.write('test')
+        
+        # invalid arguments
+
+        with pytest.raises(AssertionError):
+            extract_filename(dict(
+                file=Comparator(Operator.EQUAL, 1)
+            ), current_directory)
+        
+        with pytest.raises(AssertionError):
+            extract_filename(dict(
+                file=Comparator(Operator.EQUAL, None)
+            ), current_directory)
+        
+        with pytest.raises(AssertionError):
+            extract_filename(dict(
+                file=Comparator(Operator.NOT_EQUAL, "test1.xlsx")
+            ), current_directory)
+
+        # equality match
+
+        assert extract_filename(dict(
+            file=Comparator(Operator.EQUAL, "test1.xlsx")
+        ), current_directory) == (d('test1.xlsx'), 'test1.xlsx')
+
+        assert extract_filename(dict(
+            file=Comparator(Operator.EQUAL, "TEST1.xlsx")
+        ), current_directory) == (d('test1.xlsx'), 'test1.xlsx')
+
+        with pytest.raises(AssertionError):
+            extract_filename(dict(
+                file=Comparator(Operator.EQUAL, "notfound.xlsx")
+            ), current_directory)
+
+        # do not allow directory inline
+
+        with pytest.raises(AssertionError):
+            extract_filename(dict(
+                file=Comparator(Operator.EQUAL, d('test1.xlsx'))
+            ), current_directory)
+        
+        with pytest.raises(AssertionError):
+            extract_filename(dict(
+                file=Comparator(Operator.EQUAL, '../test1.xlsx')
+            ), current_directory)
+
+        # regex match (test2 is a tiny but more recently modified than test 1)
+
+        assert extract_filename(dict(
+            file=Comparator(Operator.REGEX, r"(test)[0-9]\.xlsx")
+        ), current_directory) == (d('test2.xlsx'), 'test')
+
+        assert extract_filename(dict(
+            file=Comparator(Operator.REGEX, r"(TEST)[0-9]\.xlsx")
+        ), current_directory) == (d('test2.xlsx'), 'test')
+
+        with pytest.raises(AssertionError):
+            extract_filename(dict(
+                file=Comparator(Operator.REGEX, r"notfound\.xlsx")
+            ), current_directory)

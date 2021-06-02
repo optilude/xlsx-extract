@@ -329,7 +329,7 @@ def extract_directory(block : Dict[str, Comparator]) -> str:
 def extract_filename(block : Dict[str, Comparator], current_directory : str) -> Tuple[str, str]:
     """Extract filename from block. May involve matching filesystem filenames.
     Returns a tuple of validated file path and filename match. May raise an
-    AssertionError if file or directory not found.
+    AssertionError if file or directory not found. Files are compared case-insensitively.
     """
 
     comp = block.get(GlobalKeys.FILE, None)
@@ -341,27 +341,30 @@ def extract_filename(block : Dict[str, Comparator], current_directory : str) -> 
     
     assert os.path.isdir(current_directory), "Directory `%s` not found" % current_directory
 
+
     with_dir = lambda f: os.path.join(current_directory, f)
     is_file = lambda f: os.path.isfile(with_dir(f))
+
+    time_sort = lambda f: os.path.getmtime(with_dir(f))
+    files = sorted(filter(is_file, os.listdir(current_directory)), key=time_sort)
 
     filename = None
     match = None
 
-    if comp.operator == Operator.EQUAL:
-        filename = match = comp.value
-    elif comp.operator == Operator.REGEX:
-        time_sort = lambda f: os.path.getmtime(with_dir(f))
-        files = sorted(filter(is_file, os.listdir(current_directory)), key=time_sort)
-    
-        for f in reversed(files):
+    for f in reversed(files):
+        if comp.operator == Operator.EQUAL:
+            if comp.value.lower() == f.lower():
+                match = filename = f
+                break
+        elif comp.operator == Operator.REGEX:
             match = comp.match(f)
             if match is not None:
                 filename = f
                 break
 
-        assert filename is not None, "No matching file found for `%s` in `%s`" % (comp.value, current_directory,)
-
+    assert filename is not None, "No matching file found for `%s` in `%s`" % (comp.value, current_directory,)
     assert is_file(filename), "File `%s` not found" % comp.value
+    
     return (with_dir(filename), match,)
 
 
