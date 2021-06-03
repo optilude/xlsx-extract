@@ -26,4 +26,7 @@ setuptools.setup(
     install_requires=[
         "openpyxl",
     ],
+    entry_points = {
+        'console_scripts': ['xlsx-extract=xlsx_extract.cli:main'],
+    }
 )
