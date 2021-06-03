@@ -5,14 +5,20 @@ import os.path
 
 from dataclasses import dataclass
 from typing import Any, Tuple
-from .match import Comparator, Operator
+from .match import CellMatch, Comparator, Operator, RangeMatch
 
 from .config import (
+    Prefix,
     interpolate_variables,
     extract_directory,
     extract_filename,
     parse_comparator,
     parse_block,
+    cast_col,
+    contains_cell_match,
+    build_cell_match,
+    build_range_match,
+    extract_source_match,
 )
 
 def test_interpolate_variables():
@@ -217,3 +223,304 @@ def test_extract_filename():
             extract_filename(dict(
                 file=Comparator(Operator.REGEX, r"notfound\.xlsx")
             ), current_directory)
+
+def test_cast_col():
+
+    assert cast_col("C") == 3
+    assert cast_col(4) == 4
+    assert cast_col(None) is None
+
+    with pytest.raises(AssertionError):
+        cast_col(3.2)
+    
+    with pytest.raises(AssertionError):
+        cast_col("zebra")
+
+def test_contains_cell_match():
+
+    assert contains_cell_match({
+        'cell': Comparator(Operator.EQUAL, "B3"),
+        'foo': Comparator(Operator.EQUAL, "bar"),
+    }) == True
+
+    assert contains_cell_match({
+        'value': Comparator(Operator.EQUAL, "foo"),
+        'foo': Comparator(Operator.EQUAL, "bar"),
+    }) == True
+
+    assert contains_cell_match({
+        'foo': Comparator(Operator.EQUAL, "bar"),
+    }) == False
+
+    assert contains_cell_match({
+        'start cell': Comparator(Operator.EQUAL, "B3"),
+        'foo': Comparator(Operator.EQUAL, "bar"),
+    }) == False
+
+    assert contains_cell_match({
+        'start cell': Comparator(Operator.EQUAL, "B3"),
+        'foo': Comparator(Operator.EQUAL, "bar"),
+    }, Prefix.start) == True
+
+    assert contains_cell_match(dict()) == False
+
+def test_build_cell_match():
+
+    assert build_cell_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'cell': Comparator(Operator.EQUAL, "B3"),
+        # 'value': Comparator(Operator.EQUAL, "baz"),
+        'row offset': Comparator(Operator.EQUAL, 1),
+        'column offset': Comparator(Operator.EQUAL, 2),
+        'min row': Comparator(Operator.EQUAL, 3),
+        'max row': Comparator(Operator.EQUAL, 4),
+        'min column': Comparator(Operator.EQUAL, 5),
+        'max column': Comparator(Operator.EQUAL, 'F'),
+    }) == CellMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        reference="B3",
+        value=None,
+        row_offset=1,
+        col_offset=2,
+        min_row=3,
+        max_row=4,
+        min_col=5,
+        max_col=6
+    )
+
+    assert build_cell_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        # 'cell': Comparator(Operator.EQUAL, "B3"),
+        'value': Comparator(Operator.EQUAL, "baz"),
+        'row offset': Comparator(Operator.EQUAL, 1),
+        'column offset': Comparator(Operator.EQUAL, 2),
+        'min row': Comparator(Operator.EQUAL, 3),
+        'max row': Comparator(Operator.EQUAL, 4),
+        'min column': Comparator(Operator.EQUAL, 5),
+        'max column': Comparator(Operator.EQUAL, 'F'),
+    }) == CellMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        # reference="B3",
+        value=Comparator(Operator.EQUAL, "baz"),
+        row_offset=1,
+        col_offset=2,
+        min_row=3,
+        max_row=4,
+        min_col=5,
+        max_col=6
+    )
+
+    # passed-in name overrides name in block
+    assert build_cell_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'cell': Comparator(Operator.EQUAL, "B3"),
+    }, name="quux") == CellMatch(
+        name="quux",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        reference="B3",
+    )
+
+    assert build_cell_match({
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'cell': Comparator(Operator.EQUAL, "B3"),
+    }, name="quux") == CellMatch(
+        name="quux",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        reference="B3",
+    )
+
+    # passed-in sheet does not override sheet in block
+    assert build_cell_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'cell': Comparator(Operator.EQUAL, "B3"),
+    }, sheet=Comparator(Operator.EQUAL, "zoo")) == CellMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        reference="B3",
+    )
+
+    assert build_cell_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'cell': Comparator(Operator.EQUAL, "B3"),
+    }, sheet=Comparator(Operator.EQUAL, "zoo")) == CellMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "zoo"),
+        reference="B3",
+    )
+
+    # prefix + name + sheet (this is what table and target matches willl do)
+
+    assert build_cell_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'start sheet': Comparator(Operator.EQUAL, "bar"),
+        'start cell': Comparator(Operator.EQUAL, "B3"),
+        # 'start value': Comparator(Operator.EQUAL, "baz"),
+        'start row offset': Comparator(Operator.EQUAL, 1),
+        'start column offset': Comparator(Operator.EQUAL, 2),
+        'start min row': Comparator(Operator.EQUAL, 3),
+        'start max row': Comparator(Operator.EQUAL, 4),
+        'start min column': Comparator(Operator.EQUAL, 5),
+        'start max column': Comparator(Operator.EQUAL, 'F'),
+    }, name="foo:start", sheet=Comparator(Operator.EQUAL, "zoo"), prefix=Prefix.start) == CellMatch(
+        name="foo:start",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        reference="B3",
+        value=None,
+        row_offset=1,
+        col_offset=2,
+        min_row=3,
+        max_row=4,
+        min_col=5,
+        max_col=6
+    )
+
+    assert build_cell_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'start value': Comparator(Operator.EQUAL, "baz"),
+    }, name="foo:start", sheet=Comparator(Operator.EQUAL, "zoo"), prefix=Prefix.start) == CellMatch(
+        name="foo:start",
+        sheet=Comparator(Operator.EQUAL, "zoo"),
+        value=Comparator(Operator.EQUAL, "baz"),
+    )
+
+def test_build_range_match():
+
+    assert build_range_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'table': Comparator(Operator.EQUAL, "B3:D6"),
+        # 'rows': Comparator(Operator.EQUAL, 4),
+        # 'columns': Comparator(Operator.EQUAL, 5),
+        # 'start cell': Comparator(Operator.EQUAL, "S1"),
+        # 'end value': Comparator(Operator.EQUAL, "V1"),
+    }) == RangeMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        reference="B3:D6",
+    )
+
+    assert build_range_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        # 'table': Comparator(Operator.EQUAL, "B3:D6"),
+        'rows': Comparator(Operator.EQUAL, 4),
+        'columns': Comparator(Operator.EQUAL, 5),
+        'start cell': Comparator(Operator.EQUAL, "S1"),
+        # 'end value': Comparator(Operator.EQUAL, "V1"),
+    }) == RangeMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        start_cell=CellMatch(
+            name="foo:start",
+            sheet=Comparator(Operator.EQUAL, "bar"),
+            reference="S1",
+        ),
+        rows=4,
+        cols=5,
+    )
+
+    assert build_range_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        # 'table': Comparator(Operator.EQUAL, "B3:D6"),
+        # 'rows': Comparator(Operator.EQUAL, 4),
+        # 'columns': Comparator(Operator.EQUAL, 5),
+        'start cell': Comparator(Operator.EQUAL, "S1"),
+        'end value': Comparator(Operator.EQUAL, "V1"),
+        'end row offset': Comparator(Operator.EQUAL, 4)
+    }) == RangeMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        start_cell=CellMatch(
+            name="foo:start",
+            sheet=Comparator(Operator.EQUAL, "bar"),
+            reference="S1",
+        ),
+        end_cell=CellMatch(
+            name="foo:end",
+            sheet=Comparator(Operator.EQUAL, "bar"),
+            value=Comparator(Operator.EQUAL, "V1"),
+            row_offset=4,
+        ),
+    )
+
+def test_extract_source_match():
+
+    assert extract_source_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'cell': Comparator(Operator.EQUAL, "B3"),
+        'row offset': Comparator(Operator.EQUAL, 1),
+        'column offset': Comparator(Operator.EQUAL, 2),
+        'min row': Comparator(Operator.EQUAL, 3),
+        'max row': Comparator(Operator.EQUAL, 4),
+        'min column': Comparator(Operator.EQUAL, 5),
+        'max column': Comparator(Operator.EQUAL, 'F'),
+    }) == CellMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        reference="B3",
+        row_offset=1,
+        col_offset=2,
+        min_row=3,
+        max_row=4,
+        min_col=5,
+        max_col=6
+    )
+
+    assert extract_source_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'table': Comparator(Operator.EQUAL, "B3:D6"),
+    }) == RangeMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        reference="B3:D6",
+    )
+
+    assert extract_source_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'start cell': Comparator(Operator.EQUAL, "S1"),
+        'end value': Comparator(Operator.EQUAL, "V1"),
+        'end row offset': Comparator(Operator.EQUAL, 4)
+    }) == RangeMatch(
+        name="foo",
+        sheet=Comparator(Operator.EQUAL, "bar"),
+        start_cell=CellMatch(
+            name="foo:start",
+            sheet=Comparator(Operator.EQUAL, "bar"),
+            reference="S1",
+        ),
+        end_cell=CellMatch(
+            name="foo:end",
+            sheet=Comparator(Operator.EQUAL, "bar"),
+            value=Comparator(Operator.EQUAL, "V1"),
+            row_offset=4,
+        ),
+    )
+
+    assert extract_source_match({
+        'name': Comparator(Operator.EQUAL, "foo"),
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+    }) == None
+
+    assert extract_source_match({
+        'sheet': Comparator(Operator.EQUAL, "bar"),
+        'table': Comparator(Operator.EQUAL, "B3:D6"),
+    }) == None
+
+    with pytest.raises(AssertionError):
+        extract_source_match({
+            'name': Comparator(Operator.EQUAL, "foo"),
+            'sheet': Comparator(Operator.EQUAL, "bar"),
+            'table': Comparator(Operator.EQUAL, "B3:D6"),
+            'cell': Comparator(Operator.EQUAL, "C1"),
+        })
+    

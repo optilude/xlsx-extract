@@ -165,7 +165,7 @@ class Action:
     target : Target = None
 
 
-def run(target_workbook : Workbook, source_directory : str, config_sheet : str = "Config") -> List[Action]:
+def run(target_workbook : Workbook, source_directory : str, source_file : str = None, config_sheet : str = "Config") -> List[Action]:
     """Load configuration from the given sheet in the target workbook and execute
     each step. Returns a history of what's happened. Tries pretty hard not to raise
     exceptions.
@@ -178,6 +178,15 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
 
     source_workbook = None
     variables = {}
+
+    if source_file is not None:
+        try:
+            source_workbook = openpyxl.load_workbook(source_file, data_only=True)
+        except (InvalidFileException, FileNotFoundError,) as e:
+            history.append(Action(GlobalKeys.FILE, False, str(e)))
+        else:
+            history.append(Action(GlobalKeys.FILE, True, "Opened %s" % source_file))
+            variables[GlobalKeys.FILE] = source_file
 
     # Find contiguous range matches for each of "directory", "file" or "name",
     # until sheet is exhausted, and put into the `blocks` list
@@ -227,7 +236,7 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
                 # Block was not a block after all - ignore
                 continue
             
-            history.append(Action(GlobalKeys.DIRECTORY, True, "Obtained %s" % source_directory, comparator=block[GlobalKeys.DIRECTORY]))
+            history.append(Action(GlobalKeys.DIRECTORY, True, "Found %s" % source_directory, comparator=block[GlobalKeys.DIRECTORY]))
             variables[GlobalKeys.DIRECTORY] = source_directory
 
         if GlobalKeys.FILE in block:
@@ -251,7 +260,7 @@ def run(target_workbook : Workbook, source_directory : str, config_sheet : str =
                 history.append(Action(GlobalKeys.FILE, False, str(e), comparator=block[GlobalKeys.FILE]))
                 continue
             
-            history.append(Action(GlobalKeys.DIRECTORY, True, "Obtained %s" % source_file, comparator=block[GlobalKeys.FILE]))
+            history.append(Action(GlobalKeys.FILE, True, "Obtained %s" % source_file, comparator=block[GlobalKeys.FILE]))
             variables[GlobalKeys.FILE] = file_match
 
         if MatchKeys.NAME in block:
@@ -405,7 +414,8 @@ def extract_filename(block : Dict[str, Comparator], current_directory : str) -> 
     return (with_dir(filename), match,)
 
 def cast_col(col : Any) -> int:
-
+    """Column name or number to number
+    """
     if isinstance(col, (str, bytes,)):
         try:
             col = column_index_from_string(col)
@@ -415,8 +425,9 @@ def cast_col(col : Any) -> int:
     return col
 
 def contains_cell_match(block : Dict[str, Comparator], prefix : Function = Prefix.none) -> bool:
-
-    return prefix(CellMatchKeys.CELL_REFERENCE) in block or prefix(CellMatchKeys.VALUE)
+    """Check if the block contains a cell reference (with optional prefix)
+    """
+    return prefix(CellMatchKeys.CELL_REFERENCE) in block or prefix(CellMatchKeys.VALUE) in block
 
 def build_cell_match(block : Dict[str, Comparator], name : str = None, sheet : Comparator = None, prefix : Function = Prefix.none) -> CellMatch:
 
@@ -424,21 +435,21 @@ def build_cell_match(block : Dict[str, Comparator], name : str = None, sheet : C
     sheet = block[prefix(CellMatchKeys.SHEET)] if prefix(CellMatchKeys.SHEET) in block else sheet
     reference = block[prefix(CellMatchKeys.CELL_REFERENCE)].value if prefix(CellMatchKeys.CELL_REFERENCE) in block else None
     value = block[prefix(CellMatchKeys.VALUE)] if prefix(CellMatchKeys.VALUE) in block else None
-    row_offset = block[prefix(CellMatchKeys.ROW_OFFSET)].value if prefix(CellMatchKeys.ROW_OFFSET) in block else None
-    col_offset = block[prefix(CellMatchKeys.COL_OFFSET)].value if prefix(CellMatchKeys.COL_OFFSET) in block else None
+    row_offset = block[prefix(CellMatchKeys.ROW_OFFSET)].value if prefix(CellMatchKeys.ROW_OFFSET) in block else 0
+    col_offset = block[prefix(CellMatchKeys.COL_OFFSET)].value if prefix(CellMatchKeys.COL_OFFSET) in block else 0
     min_row = block[prefix(CellMatchKeys.MIN_ROW)].value if prefix(CellMatchKeys.MIN_ROW) in block else None
     max_row = block[prefix(CellMatchKeys.MAX_ROW)].value if prefix(CellMatchKeys.MAX_ROW) in block else None
     min_col = cast_col(block[prefix(CellMatchKeys.MIN_COL)].value) if prefix(CellMatchKeys.MIN_COL) in block else None
     max_col = cast_col(block[prefix(CellMatchKeys.MAX_COL)].value) if prefix(CellMatchKeys.MAX_COL) in block else None
     
-    assert name is not None and isinstance(name, (str, bytes,)), "Block name must be a string"
+    assert isinstance(name, (str, bytes,)), "Block name is required and must be a string"
     assert reference is None or isinstance(reference, (str, bytes,)), "Cell reference must be a string"
     assert row_offset is None or isinstance(row_offset, int), "Row offset must be a number"
     assert col_offset is None or isinstance(col_offset, int), "Column offset must be a number"
     assert min_row is None or isinstance(min_row, int), "Min row must be a number"
-    assert max_row is None or isinstance(max_row, int), "Max row must be a number"
+    assert max_row is None or isinstance(max_row, int), "Max row must be a number or column letter"
     assert min_col is None or isinstance(min_col, int), "Min column must be a number"
-    assert max_col is None or isinstance(max_col, int), "Max column must be a number"
+    assert max_col is None or isinstance(max_col, int), "Max column must be a number  or column letter"
     
     return CellMatch(
         name=name,
@@ -453,9 +464,9 @@ def build_cell_match(block : Dict[str, Comparator], name : str = None, sheet : C
         max_col=max_col,
     )
 
-def build_range_match(block : Dict[str, Comparator], name : str = None) -> CellMatch:
+def build_range_match(block : Dict[str, Comparator]) -> CellMatch:
 
-    name = name if name is not None else block[MatchKeys.NAME].value if MatchKeys.NAME in block else None
+    name = block[MatchKeys.NAME].value if MatchKeys.NAME in block else None
     sheet = block[RangeMatchKeys.SHEET] if RangeMatchKeys.SHEET in block else None
     reference = block[RangeMatchKeys.TABLE_REFERENCE].value if RangeMatchKeys.TABLE_REFERENCE in block else None
     rows = block[RangeMatchKeys.ROWS].value if RangeMatchKeys.ROWS in block else None
@@ -463,9 +474,10 @@ def build_range_match(block : Dict[str, Comparator], name : str = None) -> CellM
     start_cell = build_cell_match(block, "%s:start" % name, sheet, Prefix.start) if contains_cell_match(block, Prefix.start) else None
     end_cell = build_cell_match(block, "%s:end" % name, sheet, Prefix.end) if contains_cell_match(block, Prefix.end) else None
 
+    assert isinstance(name, (str, bytes,)), "Block name is required and must be a string"
     assert reference is None or isinstance(reference, (str, bytes,)), "Table reference must be a string"
     assert rows is None or isinstance(rows, int), "Rows must be a number"
-    assert cols is None or isinstance(cols, int), "Rows must be a number"
+    assert cols is None or isinstance(cols, int), "Columns must be a number"
 
     return RangeMatch(
         name=name,
@@ -482,16 +494,9 @@ def extract_source_match(block : Dict[str, Comparator]) -> Match:
     """
 
     is_cell_match = MatchKeys.NAME in block and contains_cell_match(block)
+    is_range_match = MatchKeys.NAME in block and (RangeMatchKeys.TABLE_REFERENCE in block or contains_cell_match(block, Prefix.start))
 
-    is_range_match = MatchKeys.NAME in block and (
-        RangeMatchKeys.TABLE_REFERENCE in block or
-        contains_cell_match(block, Prefix.start)
-    )
-
-    if not is_cell_match and not is_range_match:
-        return None
-    
-    assert not (is_cell_match and is_cell_match), "Block refers to both a cell and a range"
+    assert not (is_cell_match and is_range_match), "Block refers to both a cell and a range"
 
     if is_cell_match:
         return build_cell_match(block)
