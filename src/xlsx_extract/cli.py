@@ -12,7 +12,6 @@ def build_arg_parser():
 
     parser = argparse.ArgumentParser()
 
-    # Missing timesheets
     parser.add_argument('target', metavar="target.xlsx", help="The Excel workbook defining the format the data should be extracted to.")
     parser.add_argument('output', nargs="?", metavar="output.xlsx", help="Output file where results will be written. Required unless --update is given.")
     parser.add_argument('--update', action='store_true', help="Use this instead of naming an output file to overwrite the target with the extract results.")
@@ -80,3 +79,4 @@ def main():
         target_workbook.save(output_filename)
 
     sys.exit(0 if success else 1)
+ 
