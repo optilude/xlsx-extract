@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.0.1",
     author="Martin Aspeli",
     author_email="optilude@gmail.com",
-    description="Tools to extract data from (poorly) structured Excel files",
+    description="Tools to extract data from (poorly) structured Excel files, building on openpyxl",
     long_description=long_description,
     long_description_content_type="text/markdown",
     # url="https://github.com/pypa/sampleproject",

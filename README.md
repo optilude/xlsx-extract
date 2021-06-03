@@ -1,6 +1,6 @@
 # xlsx-extract
 
-Extract data from (poorly) structured XLSX files
+Extract data from (poorly) structured XLSX files.
 
 ## Excel configuration data
 
