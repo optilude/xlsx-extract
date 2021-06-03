@@ -1,14 +1,16 @@
 import os
+import openpyxl
 
 from dataclasses import dataclass
 from string import Template
-from typing import Any, Dict, List, Match, Tuple, Union
-from _pytest.python import Function
-import openpyxl
+from typing import Any, Dict, List, Match, Tuple, Callable
 
+from openpyxl import load_workbook
 from openpyxl.workbook.workbook import Workbook
 from openpyxl.utils.cell import column_index_from_string
 from openpyxl.utils.exceptions import InvalidFileException
+
+from zipfile import BadZipFile
 
 from .range import Range
 from .match import Comparator, RangeMatch, CellMatch, Operator
@@ -164,6 +166,13 @@ class Action:
     match : Match = None
     target : Target = None
 
+    def __str__(self):
+        return "%s: %s - %s" % (
+            self.name,
+            "Success" if self.success else "Failed",
+            self.message
+        )
+
 
 def run(target_workbook : Workbook, source_directory : str, source_file : str = None, config_sheet : str = "Config") -> List[Action]:
     """Load configuration from the given sheet in the target workbook and execute
@@ -181,8 +190,8 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
 
     if source_file is not None:
         try:
-            source_workbook = openpyxl.load_workbook(source_file, data_only=True)
-        except (InvalidFileException, FileNotFoundError,) as e:
+            source_workbook = load_workbook(source_file, data_only=True)
+        except (InvalidFileException, FileNotFoundError, BadZipFile,) as e:
             history.append(Action(GlobalKeys.FILE, False, str(e)))
         else:
             history.append(Action(GlobalKeys.FILE, True, "Opened %s" % source_file))
@@ -198,10 +207,13 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
             value=Comparator(
                 Operator.REGEX, r'^\s*(' + '|'.join(
                     (GlobalKeys.DIRECTORY, GlobalKeys.FILE, MatchKeys.NAME,)
-                ) + r')\s*$')
+                ) + r')\s*$'
             ),
-        min_row=1,
+            min_row=1,
         )
+    )
+
+    history.append(Action("Start", True, "Starting extract"))
     
     while (match := block_match.match(target_workbook)) != (None, None,):
         block_range, _ = match
@@ -317,6 +329,7 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
             if match_value is not None:
                 variables[block_name] = match_value
     
+    history.append(Action("End", True, "Finishing extract"))
     return history
 
 def parse_block(match_range : Range, variables : Dict[str, Any]) -> Dict[str, Comparator]:
@@ -424,12 +437,12 @@ def cast_col(col : Any) -> int:
     assert col is None or isinstance(col, int), "%s is not a valid column name" % col
     return col
 
-def contains_cell_match(block : Dict[str, Comparator], prefix : Function = Prefix.none) -> bool:
+def contains_cell_match(block : Dict[str, Comparator], prefix : Callable = Prefix.none) -> bool:
     """Check if the block contains a cell reference (with optional prefix)
     """
     return prefix(CellMatchKeys.CELL_REFERENCE) in block or prefix(CellMatchKeys.VALUE) in block
 
-def build_cell_match(block : Dict[str, Comparator], name : str = None, sheet : Comparator = None, prefix : Function = Prefix.none) -> CellMatch:
+def build_cell_match(block : Dict[str, Comparator], name : str = None, sheet : Comparator = None, prefix : Callable = Prefix.none) -> CellMatch:
 
     name = name if name is not None else block[MatchKeys.NAME].value if MatchKeys.NAME in block else None
     sheet = block[prefix(CellMatchKeys.SHEET)] if prefix(CellMatchKeys.SHEET) in block else sheet
