@@ -180,13 +180,13 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
     exceptions.
     """
 
-    if config_sheet not in target_workbook.sheetnames:
-        return None
-    
     history = []
-
-    source_workbook = None
     variables = {}
+    source_workbook = None
+
+    if config_sheet not in target_workbook.sheetnames:
+        history.append(Action("Configuration", False, "Configuration sheet `%s` does not exist in target workbook" % config_sheet))
+        return history
 
     if source_file is not None:
         try:
@@ -213,8 +213,9 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
         )
     )
 
-    history.append(Action("Start", True, "Starting extract"))
+    history.append(Action("Extract", True, "Starting extract"))
     
+    num_blocks = 0
     while (match := block_match.match(target_workbook)) != (None, None,):
         block_range, _ = match
 
@@ -230,6 +231,7 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
         except AssertionError as e:
             # Block contained an explicit parsing error (e.g. invalid operator)
             history.append(Action(block_range.first_cell.value, False, str(e)))
+            success = False
             continue
         
         if block is None:
@@ -242,6 +244,7 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
             except AssertionError as e:
                 # Malformed block
                 history.append(Action(GlobalKeys.DIRECTORY, False, str(e)))
+                success = False
                 continue
 
             if source_directory is None:
@@ -326,10 +329,12 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
             else:
                 history.append(Action(block_name, True, "Matched", match=source_match, target=target))
             
+            num_blocks += 1
             if match_value is not None:
                 variables[block_name] = match_value
     
-    history.append(Action("End", True, "Finishing extract"))
+    all_success = all(a.success for a in history)
+    history.append(Action("Extract", all_success, "Extracted %d blocks" % num_blocks))
     return history
 
 def parse_block(match_range : Range, variables : Dict[str, Any]) -> Dict[str, Comparator]:
