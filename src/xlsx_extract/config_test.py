@@ -5,7 +5,9 @@ import os.path
 
 from dataclasses import dataclass
 from typing import Any, Tuple
+
 from .match import CellMatch, Comparator, Operator, RangeMatch
+from .target import Target
 
 from .config import (
     Prefix,
@@ -19,6 +21,7 @@ from .config import (
     build_cell_match,
     build_range_match,
     extract_source_match,
+    extract_target,
 )
 
 def test_interpolate_variables():
@@ -523,4 +526,52 @@ def test_extract_source_match():
             'table': Comparator(Operator.EQUAL, "B3:D6"),
             'cell': Comparator(Operator.EQUAL, "C1"),
         })
+
+def test_extract_target():
+
+    source_cell_match = CellMatch(name="foo", reference="Foo")
+    source_range_match = RangeMatch(name="bar", reference="Bar")
+
+    assert extract_target({
+        'foo': Comparator(Operator.EQUAL, 'Baz'),
+    }, source_cell_match) == None
+
+    assert extract_target({
+        'target cell': Comparator(Operator.EQUAL, 'Baz'),
+    }, source_cell_match) == Target(
+        source=source_cell_match,
+        target=CellMatch(name="foo:target", reference="Baz"),
+    )
+
+    assert extract_target({
+        'target table': Comparator(Operator.EQUAL, 'Baz'),
+    }, source_range_match) == Target(
+        source=source_range_match,
+        target=RangeMatch(name="bar:target", reference="Baz"),
+    )
+
+    assert extract_target({
+        'target table': Comparator(Operator.EQUAL, 'Baz'),
+        'align': Comparator(Operator.EQUAL, True),
+        'expand': Comparator(Operator.EQUAL, True),
+        'source row value': Comparator(Operator.EQUAL, "alpha"),
+        'source column value': Comparator(Operator.EQUAL, "beta"),
+        'target row value': Comparator(Operator.EQUAL, "delta"),
+        'target column value': Comparator(Operator.EQUAL, "gamma"),
+    }, source_range_match) == Target(
+        source=source_range_match,
+        target=RangeMatch(name="bar:target", reference="Baz"),
+        align=True,
+        expand=True,
+        source_row=CellMatch(name="bar:source_row", value=Comparator(Operator.EQUAL, "alpha")),
+        source_col=CellMatch(name="bar:source_col", value=Comparator(Operator.EQUAL, "beta")),
+        target_row=CellMatch(name="bar:target_row", value=Comparator(Operator.EQUAL, "delta")),
+        target_col=CellMatch(name="bar:target_col", value=Comparator(Operator.EQUAL, "gamma")),
+    )
+
+    with pytest.raises(AssertionError):
+        extract_target({
+            'target cell': Comparator(Operator.EQUAL, 'Baz'),
+            'target table': Comparator(Operator.EQUAL, 'Baz'),
+        }, source_cell_match)
     

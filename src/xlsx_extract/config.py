@@ -515,8 +515,8 @@ def extract_target(block : Dict[str, Comparator], source_match : Match) -> Targe
     target_cell = block[TargetKeys.TARGET_CELL].value if TargetKeys.TARGET_CELL in block else None
     target_table = block[TargetKeys.TARGET_TABLE].value if TargetKeys.TARGET_TABLE in block else None
 
-    align = block[TargetKeys.ALIGN].value if TargetKeys.ALIGN in block else None
-    expand = block[TargetKeys.EXPAND].value if TargetKeys.ALIGN in block else None
+    align = block[TargetKeys.ALIGN].value if TargetKeys.ALIGN in block else False
+    expand = block[TargetKeys.EXPAND].value if TargetKeys.ALIGN in block else False
 
     source_row = build_cell_match(block, "%s:source_row" % source_match.name, source_match.sheet, Prefix.source_row) if contains_cell_match(block, Prefix.source_row) else None
     source_col = build_cell_match(block, "%s:source_col" % source_match.name, source_match.sheet, Prefix.source_col) if contains_cell_match(block, Prefix.source_col) else None
@@ -540,6 +540,8 @@ def extract_target(block : Dict[str, Comparator], source_match : Match) -> Targe
         source_col=source_col,
         target_row=target_row,
         target_col=target_col,
+        align=align,
+        expand=expand,
     )
 
 def interpolate_variables(value : str, variables : Dict[str, Any]) -> str:
