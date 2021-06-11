@@ -15,7 +15,7 @@ Match/target blocks are separated by blank rows and have three columns: key, ope
 
 Variables can be used in any value in match/target blocks after the point of definition. For instance you could use a parameter row like "Value" | "is" | "Starting on ${Start date} " and the ${Start date} placeholder would be replaced by the relevant string.
 
-The other mandatory key is "Sheet", which can take the operator "is" or "matches" and a value to identify the sheet name in the source workbook. If the operator is "matches" you can use a regular expression. If multiple sheets match, the first one will be used.
+The other common key is "Sheet", which can take the operator "is" or "matches" and a value to identify the sheet name in the source workbook. If the operator is "matches" you can use a regular expression. If multiple sheets match, the first one will be used. "Sheet" can be skipped if using a "Cell" or "Table" reference (see below) that either includes a sheet name (e.g. "Foo!A3") or refers to a defined name.
 
 Next must come some search criteria.
 
