@@ -62,7 +62,7 @@ def main():
 
     # operate from the source directory, if given
     os.chdir(source_directory)
-
+    
     history = run(target_workbook, source_directory, source_file, config_sheet)
 
     success = True
@@ -79,4 +79,6 @@ def main():
         target_workbook.save(output_filename)
 
     sys.exit(0 if success else 1)
- 
+
+if __name__ == '__main__':
+    main()
