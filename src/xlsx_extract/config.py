@@ -168,7 +168,7 @@ class Action:
 
     def __str__(self):
         return "%s: %s - %s" % (
-            self.name,
+            self.name.capitalize(),
             "Success" if self.success else "Failed",
             self.message
         )
@@ -231,7 +231,6 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
         except AssertionError as e:
             # Block contained an explicit parsing error (e.g. invalid operator)
             history.append(Action(block_range.first_cell.value, False, str(e)))
-            success = False
             continue
         
         if block is None:
@@ -244,7 +243,6 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
             except AssertionError as e:
                 # Malformed block
                 history.append(Action(GlobalKeys.DIRECTORY, False, str(e)))
-                success = False
                 continue
 
             if source_directory is None:
@@ -283,7 +281,7 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
 
             # Don't parse target blocks if we don't yet have a file
             if source_workbook is None:
-                history.append(Action(block_name, False, "No filename set ahead of %s" % block_name))
+                history.append(Action(block_name, False, "No source workbook set ahead of %s" % block_name))
                 continue
 
             try:
@@ -325,7 +323,7 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
                     continue
             
             if match_range is None:
-                history.append(Action(block_name, False, "%s failed to match", match=source_match, target=target))
+                history.append(Action(block_name, False, "Failed to match", match=source_match, target=target))
             else:
                 history.append(Action(block_name, True, "Matched", match=source_match, target=target))
             
@@ -333,8 +331,7 @@ def run(target_workbook : Workbook, source_directory : str, source_file : str = 
             if match_value is not None:
                 variables[block_name] = match_value
     
-    all_success = all(a.success for a in history)
-    history.append(Action("Extract", all_success, "Extracted %d blocks" % num_blocks))
+    history.append(Action("Extract", all(a.success for a in history), "Extracted %d blocks" % num_blocks))
     return history
 
 def parse_block(match_range : Range, variables : Dict[str, Any]) -> Dict[str, Comparator]:
@@ -534,7 +531,7 @@ def extract_target(block : Dict[str, Comparator], source_match : Match) -> Targe
     target_table = block[TargetKeys.TARGET_TABLE].value if TargetKeys.TARGET_TABLE in block else None
 
     align = block[TargetKeys.ALIGN].value if TargetKeys.ALIGN in block else False
-    expand = block[TargetKeys.EXPAND].value if TargetKeys.ALIGN in block else False
+    expand = block[TargetKeys.EXPAND].value if TargetKeys.EXPAND in block else False
 
     source_row = build_cell_match(block, "%s:source_row" % source_match.name, source_match.sheet, Prefix.source_row) if contains_cell_match(block, Prefix.source_row) else None
     source_col = build_cell_match(block, "%s:source_col" % source_match.name, source_match.sheet, Prefix.source_col) if contains_cell_match(block, Prefix.source_col) else None
