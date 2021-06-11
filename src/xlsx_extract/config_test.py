@@ -1,7 +1,9 @@
-import pytest
 import time
+import datetime
 import tempfile
 import os.path
+import pytest
+import openpyxl
 
 from dataclasses import dataclass
 from typing import Any, Tuple
@@ -22,6 +24,7 @@ from .config import (
     build_range_match,
     extract_source_match,
     extract_target,
+    run,
 )
 
 def test_interpolate_variables():
@@ -574,4 +577,20 @@ def test_extract_target():
             'target cell': Comparator(Operator.EQUAL, 'Baz'),
             'target table': Comparator(Operator.EQUAL, 'Baz'),
         }, source_cell_match)
+
+def test_run():
+    directory = os.path.join(os.path.dirname(__file__), 'test_data')
+    target_file = os.path.join(directory, 'target.xlsx')
+    
+    target_workbook = openpyxl.load_workbook(target_file, data_only=True)
+
+    history = run(target_workbook, directory)
+
+    # we could make more assertions here, but in reality it's more useful to eyeball this
+    assert target_workbook['Summary']['C3'].value == datetime.datetime(2021, 5, 1)
+    assert target_workbook['Summary']['F3'].value == 'input'
+    assert target_workbook['Summary']['C5'].value == 12
+
+    assert len(history) > 3  # start, file, multiple blocks, then finish 
+    assert all((a.success for a in history))
     
