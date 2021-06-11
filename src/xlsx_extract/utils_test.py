@@ -39,7 +39,7 @@ def test_get_range():
     assert get_range("'Report 1'!A3", wb).get_reference(absolute=False) == "'Report 1'!A3"
     assert get_range("'Report 1'!A3", wb, ws).get_reference(absolute=False) == "'Report 1'!A3"
 
-    assert get_range("RangleTable", wb) is None
+    assert get_range("RangleTable", wb).get_reference() == "RangleTable"
     assert get_range("RangleTable", wb, ws).get_reference() == "RangleTable"
     assert get_range("RangleTable", wb, ws).get_reference(absolute=False, use_named_table=False) == "'Report 2'!B10:E13"
 

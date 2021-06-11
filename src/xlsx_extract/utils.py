@@ -15,7 +15,20 @@ def get_range(ref : str, workbook : Workbook, worksheet : Worksheet = None) -> R
     """
 
     defined_name = get_defined_name(workbook, worksheet, ref)
-    named_table = get_named_table(worksheet, ref)
+    named_table = None
+    
+    if defined_name is None:
+        # Annoyingly, the named table API is at sheet level when it probably
+        # should be at workbook level
+        
+        if worksheet is not None:
+            named_table = get_named_table(worksheet, ref)
+        else:
+            for ws in workbook.worksheets:
+                named_table = get_named_table(ws, ref)
+                if named_table is not None:
+                    worksheet = ws
+                    break
     
     ref = \
         defined_name.attr_text if defined_name is not None \
