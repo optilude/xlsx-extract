@@ -128,3 +128,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+src/xlsx_extract/test_data/output.xlsx
