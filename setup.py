@@ -5,16 +5,13 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="xlsx-extract",
-    version="0.0.1",
+    version="0.1.0",
     author="Martin Aspeli",
     author_email="optilude@gmail.com",
     description="Tools to extract data from (poorly) structured Excel files, building on openpyxl",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    # url="https://github.com/pypa/sampleproject",
-    # project_urls={
-    #     "Bug Tracker": "https://github.com/pypa/sampleproject/issues",
-    # },
+    url="https://github.com/optilude/xlsx-extract",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
