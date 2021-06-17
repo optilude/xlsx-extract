@@ -55,7 +55,7 @@ def main():
     target_workbook = None
 
     try:
-        target_workbook = openpyxl.load_workbook(args.target, data_only=True)
+        target_workbook = openpyxl.load_workbook(args.target, data_only=False)
     except (openpyxl.utils.exceptions.InvalidFileException, zipfile.BadZipFile, FileNotFoundError,) as e:
         print(str(e))
         return

@@ -582,7 +582,7 @@ def test_run():
     directory = os.path.join(os.path.dirname(__file__), 'test_data')
     target_file = os.path.join(directory, 'target.xlsx')
     
-    target_workbook = openpyxl.load_workbook(target_file, data_only=True)
+    target_workbook = openpyxl.load_workbook(target_file, data_only=False)
 
     history = run(target_workbook, directory)
 

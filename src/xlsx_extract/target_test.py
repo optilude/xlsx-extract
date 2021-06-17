@@ -77,7 +77,7 @@ class TestInit:
 
 def test_single_cell():
     source_wb = get_test_workbook('source.xlsx')
-    target_wb = get_test_workbook('target.xlsx')
+    target_wb = get_test_workbook('target.xlsx', data_only=False)
 
     assert source_wb['Report 1']['C3'].value == datetime(2021, 5, 1)
     assert target_wb['Summary']['C3'].value != datetime(2021, 5, 1)
@@ -93,7 +93,7 @@ def test_single_cell():
 
 def test_single_cell_triangulated_source():
     source_wb = get_test_workbook('source.xlsx')
-    target_wb = get_test_workbook('target.xlsx')
+    target_wb = get_test_workbook('target.xlsx', data_only=False)
 
     t = Target(
         source=RangeMatch("Date:source", reference="'Report 1'!B5:F9"),
@@ -108,7 +108,7 @@ def test_single_cell_triangulated_source():
 
 def test_single_cell_triangulated_target():
     source_wb = get_test_workbook('source.xlsx')
-    target_wb = get_test_workbook('target.xlsx')
+    target_wb = get_test_workbook('target.xlsx', data_only=False)
 
     t = Target(
         source=RangeMatch("Date:source", reference="'Report 1'!B5:F9"),
@@ -125,7 +125,7 @@ def test_single_cell_triangulated_target():
 
 def test_replace_table():
     source_wb = get_test_workbook('source.xlsx')
-    target_wb = get_test_workbook('target.xlsx')
+    target_wb = get_test_workbook('target.xlsx', data_only=False)
 
     source = Range(source_wb['Report 1']['B5:F9'])
     target = Range(target_wb['Summary']['B7:E9'])
@@ -165,7 +165,7 @@ def test_replace_table():
 
 def test_replace_table_expand():
     source_wb = get_test_workbook('source.xlsx')
-    target_wb = get_test_workbook('target.xlsx')
+    target_wb = get_test_workbook('target.xlsx', data_only=False)
 
     source = Range(source_wb['Report 1']['B5:F9'])
     target = Range(target_wb['Summary']['B7:E9'])
@@ -210,7 +210,7 @@ def test_replace_table_expand():
 
 def test_align_vector():
     source_wb = get_test_workbook('source.xlsx')
-    target_wb = get_test_workbook('target.xlsx')
+    target_wb = get_test_workbook('target.xlsx', data_only=False)
 
     source = Range(source_wb['Report 1']['B5:F9'])
     target = Range(target_wb['Summary']['B7:E9'])
@@ -248,7 +248,7 @@ def test_align_vector():
 
 def test_replace_vector():
     source_wb = get_test_workbook('source.xlsx')
-    target_wb = get_test_workbook('target.xlsx')
+    target_wb = get_test_workbook('target.xlsx', data_only=False)
 
     source = Range(source_wb['Report 1']['B5:F9'])
     target = Range(target_wb['Summary']['B7:E9'])
@@ -285,7 +285,7 @@ def test_replace_vector():
 
 def test_replace_vector_expand():
     source_wb = get_test_workbook('source.xlsx')
-    target_wb = get_test_workbook('target.xlsx')
+    target_wb = get_test_workbook('target.xlsx', data_only=False)
 
     source = Range(source_wb['Report 1']['B5:F9'])
     target = Range(target_wb['Summary']['B7:E9'])

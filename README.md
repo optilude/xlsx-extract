@@ -37,6 +37,8 @@ Match and target configuration can be loaded from an Excel sheet in the target w
 
 The purpose of this sheet is to match (locate) values in a *source* sheet in another workbook (or multiple other workbooks), and define a *target* in the current workbook where those values will be copied to. Configuration is specified in "blocks" of three columns: a parameter (e.g. "File" or "Name"), an operator (e.g. "is", ">", "matches", etc.) and a value (a string, number, date, or boolean). Blocks are separated by at least one blank row. You can have other (typically blank) cells above or before each configuration block, and other content (typically text commentary) in columns to the right of them, but it is recommended to keep the "Config" sheet as simple as possible to avoid confusing the parser.
 
+> Note: You should *not* use formulae to construct configuration blocks. They must be created with simple cell values only.
+
 A directory in which to look for source files and a source file name must be set first. Typically, the directory is set externally (e.g. on the command line) and the file is set with a "File" block at the top of the configuration sheet, though you can also set the directory with a "Directory" block if you want to embed it in the sheet, and you can specify the source file externally (e.g. on the command line) as well. The directory and file must be set one way or the other before any match blocks (which start with "Name"), otherwise the parser won't be able to locate the source data. It is possible to change the file part way through the configuration with a subsequent "File" block, in which case match blocks below that point will use the new file.
 
 The file block consists of a single row: The parameter is "File", the operator is either "is" or "matches", and a file name or pattern. In this documentation, we will refer to that as `"File" | "is" | "My source.xlsx"` representing a row with three column.
@@ -89,7 +91,17 @@ If targetting a row, the "Expand" parameter, defaulting to TRUE, behaves a littl
 
 Instead of copying the entire matched row/column, however, you can align it to the corresponding column/row headings by setting "Align" | "is" | TRUE. For example, imagine a source table with rows where the first column contains a set of labels like "Alpha", "Beta", "Delta", "Gamma". In the target table, you might have some of these labels, perhaps in a different order, e.g. "Gamma", "Delta". If you target a particular source column and target column and set "Align" to TRUE, the values corresponding to "Gamma" and "Delta" (only) will be copied to the relevant rows in the target column.
 
-# Using the Python interface
+## Limitations
+
+This tool cannot handle every conceivable scenario, and you may need to be a little creative in how to construct the target workbook. Some of these limitations come from the way that the source and target workbooks are parsed and manipulated using the `openpyxl` Python library.
+
+- Each *source* workbook is loaded in "data only" mode. This means that the values that will be read will be those saved with the workbook when it was last openened in Excel. Thus, dynamic formulae (e.g. using the current date or attempting to read data from an external source) will not be re-evaluated.
+- The *target* workbook, conversely, is opened in "formulas" mode. This means that `xlsx-extract` will see the text of a formula, but it is *not* able to evaluate it. This is only really a problem if you want to use formulas on the "Config" sheet (which, put simply, you can't).
+- When replacing tables in the target workbook and using the "Expand" parameter, you may change the shape of the target workbook by adding or removing rows or columns. It is possible for this to corrupt the workbook if adjacent cells or named tables are impacted. In general, it is safest to keep tables that may grow or shrink on their own, simple worksheets and reference this data from other sheets as required.
+- Similarly, formulae elsewhere on a sheet are not updated if the geometry of the sheet changes. In Excel, if you add or delete a row or column, any formulae that reference cells that change coordinates as a result are automatically updated. Sadly, this tool cannot do that for you. Again, keeping growing/shrinking tables on their own sheets can help with this.
+- It is possible for other, more advanced elements of the target workbook to be stripped when the output file is saved.
+
+## Using the Python interface
 
 All of the above can be done using primities in Python. The code contains the documentation, but for orientation:
 
